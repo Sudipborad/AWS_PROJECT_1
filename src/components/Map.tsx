@@ -59,30 +59,54 @@ const LocationButton = () => {
   const { toast } = useToast();
   
   const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "Error",
+        description: "Geolocation is not supported by your browser.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     toast({
       title: "Finding your location...",
       description: "Please allow location access if prompted.",
     });
     
-    map.locate({
-      setView: true,
-      maxZoom: 16
-    });
-    
-    map.on('locationfound', (e) => {
-      toast({
-        title: "Location found",
-        description: "Map has been centered on your current location.",
-      });
-    });
-    
-    map.on('locationerror', (e) => {
-      toast({
-        title: "Location error",
-        description: "Unable to find your location. Please check your device settings.",
-        variant: "destructive"
-      });
-    });
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        map.setView([latitude, longitude], 16);
+        toast({
+          title: "Location found",
+          description: "Map has been centered on your current location.",
+        });
+      },
+      (error) => {
+        let errorMessage = "Unable to find your location.";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access was denied. Please check your browser settings.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out.";
+            break;
+        }
+        toast({
+          title: "Location error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
   };
   
   return (
@@ -101,15 +125,15 @@ const LocationButton = () => {
 
 const Map: React.FC<MapProps> = ({
   onLocationSelect,
-  initialCenter = [40, -74.5],
-  initialZoom = 9,
+  initialCenter = [20.5937, 78.9629], // Center of India
+  initialZoom = 5,
   markerPositions = [],
   interactive = true
 }) => {
   const { toast } = useToast();
+  const [center, setCenter] = useState<[number, number]>(initialCenter);
   const [markers, setMarkers] = useState<Array<{lat: number, lng: number, title?: string}>>(markerPositions);
   const mapRef = useRef(null);
-  const locationFetchedRef = useRef(false);
 
   useEffect(() => {
     // Update markers when markerPositions prop changes
@@ -129,58 +153,62 @@ const Map: React.FC<MapProps> = ({
     }
   };
 
-  // Get user's location on component mount if available
+  // Get user's location on component mount
   useEffect(() => {
-    const getLocation = () => {
-      if (interactive && onLocationSelect && navigator.geolocation && !locationFetchedRef.current) {
-        locationFetchedRef.current = true; // Set the flag to prevent multiple fetches
-        
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { latitude, longitude } = position.coords;
+    if (interactive && onLocationSelect && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          // Update center and zoom
+          setCenter([latitude, longitude]);
+          
+          // Only set location if we don't have markers yet
+          if (markers.length === 0 && markerPositions.length === 0) {
+            onLocationSelect({
+              lat: latitude,
+              lng: longitude
+            });
             
-            // Only set initial location if we don't have markers yet
-            if (markers.length === 0 && markerPositions.length === 0) {
-              // Call onLocationSelect with the user's coordinates
-              onLocationSelect({
-                lat: latitude,
-                lng: longitude
-              });
-              
-              toast({
-                title: "Location found",
-                description: "Using your current location",
-              });
-            }
-          },
-          (error) => {
-            console.error("Error getting location:", error);
-            // Don't show error toast as the user can still select location manually
+            toast({
+              title: "Location found",
+              description: "Using your current location",
+            });
           }
-        );
-      }
-    };
-    
-    getLocation();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array to ensure it only runs once on mount
-
-  // Force re-render if map container is missing
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (mapRef.current) {
-        console.log("Map container is ready");
-      }
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, []);
+        },
+        (error) => {
+          let errorMessage = "Unable to find your location.";
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = "Location access was denied. Please check your browser settings.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = "Location information is unavailable.";
+              break;
+            case error.TIMEOUT:
+              errorMessage = "Location request timed out.";
+              break;
+          }
+          toast({
+            title: "Location error",
+            description: errorMessage,
+            variant: "destructive"
+          });
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+  }, [interactive, onLocationSelect, markers.length, markerPositions.length, toast]);
 
   return (
     <div ref={mapRef} className="relative w-full h-[400px] rounded-md overflow-hidden">
       {typeof window !== 'undefined' && (
         <MapContainer 
-          center={initialCenter} 
+          center={center} 
           zoom={initialZoom} 
           scrollWheelZoom={interactive}
           dragging={interactive}
@@ -194,30 +222,29 @@ const Map: React.FC<MapProps> = ({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <SetViewOnLoad center={initialCenter} zoom={initialZoom} />
+          <SetViewOnLoad center={center} zoom={initialZoom} />
           
           {/* Only add click events if interactive and onLocationSelect provided */}
           {interactive && onLocationSelect && (
             <MapEvents onLocationSelect={handleLocationSelect} />
           )}
           
-          {/* Display all markers */}
-          {markers.map((position, idx) => (
+          {/* Add location button if interactive */}
+          {interactive && <LocationButton />}
+          
+          {/* Display markers */}
+          {markers.map((marker, index) => (
             <Marker 
-              key={`marker-${idx}-${position.lat}-${position.lng}`} 
-              position={[position.lat, position.lng]}
-              icon={DefaultIcon}
+              key={`${marker.lat}-${marker.lng}-${index}`}
+              position={[marker.lat, marker.lng]}
             >
-              {position.title && (
+              {marker.title && (
                 <Popup>
-                  <div>{position.title}</div>
+                  {marker.title}
                 </Popup>
               )}
             </Marker>
           ))}
-          
-          {/* Add location control if interactive */}
-          {interactive && <LocationButton />}
         </MapContainer>
       )}
     </div>

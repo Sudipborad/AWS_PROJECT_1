@@ -29,7 +29,7 @@ const SignInPage = () => {
       
       <footer className="border-t py-6 bg-muted/40">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>© 2023 Eco Guardian. All rights reserved.</p>
+          <p>© 2025 Eco Guardian. All rights reserved.</p>
         </div>
       </footer>
     </div>
