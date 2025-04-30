@@ -11,6 +11,7 @@ import { useUser } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import React from "react";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 import HomePage from "./pages/HomePage";
 import Index from "./pages/Index";
@@ -87,137 +88,139 @@ const RoleBasedRedirect = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <ScrollToTop />
-        <SidebarProvider>
-          <AnimatePresence mode="wait">
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<HomePage />} />
-              <Route path="/role-selection" element={<Index />} />
-              <Route path="/sign-in" element={<SignInPage />} />
-              <Route path="/sign-up" element={<SignUpPage />} />
-              <Route path="/access-denied" element={<AccessDeniedPage />} />
-              
-              {/* Route to redirect based on role after sign-in */}
-              <Route path="/dashboard" element={
-                <AuthenticatedRoute>
-                  <ClerkLoaded>
-                    <RoleBasedRedirect />
-                  </ClerkLoaded>
-                </AuthenticatedRoute>
-              } />
-              
-              {/* User routes */}
-              <Route path="/user-dashboard" element={
-                <AuthenticatedRoute allowedRoles={["user"]}>
-                  <UserDashboard />
-                </AuthenticatedRoute>
-              } />
-              <Route path="/new-complaint" element={
-                <AuthenticatedRoute allowedRoles={["user"]}>
-                  <NewComplaintPage />
-                </AuthenticatedRoute>
-              } />
-              <Route path="/recyclable-item" element={
-                <AuthenticatedRoute allowedRoles={["user"]}>
-                  <RecyclableItemForm />
-                </AuthenticatedRoute>
-              } />
-              
-              {/* Officer routes */}
-              <Route path="/officer-dashboard" element={
-                <AuthenticatedRoute allowedRoles={["officer"]}>
-                  <OfficerDashboard />
-                </AuthenticatedRoute>
-              } />
-              <Route path="/schedule" element={
-                <AuthenticatedRoute allowedRoles={["officer"]}>
-                  <SchedulePage />
-                </AuthenticatedRoute>
-              } />
-              
-              {/* Admin routes */}
-              <Route path="/admin" element={
-                <AuthenticatedRoute allowedRoles={["admin"]}>
-                  <AdminPage />
-                </AuthenticatedRoute>
-              } />
-              <Route path="/officers" element={
-                <AuthenticatedRoute allowedRoles={["admin"]}>
-                  <OfficersPage />
-                </AuthenticatedRoute>
-              } />
-              <Route path="/users" element={
-                <AuthenticatedRoute allowedRoles={["admin"]}>
-                  <UsersPage />
-                </AuthenticatedRoute>
-              } />
-              <Route 
-                path="/admin/assign-cases" 
-                element={
-                  <AuthenticatedRoute allowedRoles={['admin']}>
-                    <AssignCasesPage />
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <ScrollToTop />
+          <SidebarProvider>
+            <AnimatePresence mode="wait">
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<HomePage />} />
+                <Route path="/role-selection" element={<Index />} />
+                <Route path="/sign-in" element={<SignInPage />} />
+                <Route path="/sign-up" element={<SignUpPage />} />
+                <Route path="/access-denied" element={<AccessDeniedPage />} />
+                
+                {/* Route to redirect based on role after sign-in */}
+                <Route path="/dashboard" element={
+                  <AuthenticatedRoute>
+                    <ClerkLoaded>
+                      <RoleBasedRedirect />
+                    </ClerkLoaded>
                   </AuthenticatedRoute>
-                } 
-              />
-              
-              {/* Routes accessible to all authenticated users */}
-              <Route path="/complaints" element={
-                <AuthenticatedRoute>
-                  <ComplaintsPage />
-                </AuthenticatedRoute>
-              } />
-              <Route path="/complaints/:id" element={
-                <AuthenticatedRoute>
-                  <ComplaintDetailsPage />
-                </AuthenticatedRoute>
-              } />
-              <Route path="/recyclable-requests" element={
-                <AuthenticatedRoute>
-                  <RecyclableRequestsPage />
-                </AuthenticatedRoute>
-              } />
-              <Route path="/recyclable-requests/:id" element={
-                <AuthenticatedRoute>
-                  <RecyclableItemDetailsPage />
-                </AuthenticatedRoute>
-              } />
-              <Route path="/settings" element={
-                <AuthenticatedRoute>
-                  <SettingsPage />
-                </AuthenticatedRoute>
-              } />
-              <Route path="/profile" element={
-                <AuthenticatedRoute>
-                  <ProfilePage />
-                </AuthenticatedRoute>
-              } />
-              
-              <Route path="/officer-report/:id?" element={
-                <AuthenticatedRoute>
-                  <OfficerReportPage />
-                </AuthenticatedRoute>
-              } />
-              
-              <Route path="/officer-profile/:id" element={
-                <AuthenticatedRoute>
-                  <OfficerProfilePage />
-                </AuthenticatedRoute>
-              } />
-              
-              {/* Catch-all route */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AnimatePresence>
-        </SidebarProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+                } />
+                
+                {/* User routes */}
+                <Route path="/user-dashboard" element={
+                  <AuthenticatedRoute allowedRoles={["user"]}>
+                    <UserDashboard />
+                  </AuthenticatedRoute>
+                } />
+                <Route path="/new-complaint" element={
+                  <AuthenticatedRoute allowedRoles={["user"]}>
+                    <NewComplaintPage />
+                  </AuthenticatedRoute>
+                } />
+                <Route path="/recyclable-item" element={
+                  <AuthenticatedRoute allowedRoles={["user"]}>
+                    <RecyclableItemForm />
+                  </AuthenticatedRoute>
+                } />
+                
+                {/* Officer routes */}
+                <Route path="/officer-dashboard" element={
+                  <AuthenticatedRoute allowedRoles={["officer"]}>
+                    <OfficerDashboard />
+                  </AuthenticatedRoute>
+                } />
+                <Route path="/schedule" element={
+                  <AuthenticatedRoute allowedRoles={["officer"]}>
+                    <SchedulePage />
+                  </AuthenticatedRoute>
+                } />
+                
+                {/* Admin routes */}
+                <Route path="/admin" element={
+                  <AuthenticatedRoute allowedRoles={["admin"]}>
+                    <AdminPage />
+                  </AuthenticatedRoute>
+                } />
+                <Route path="/officers" element={
+                  <AuthenticatedRoute allowedRoles={["admin"]}>
+                    <OfficersPage />
+                  </AuthenticatedRoute>
+                } />
+                <Route path="/users" element={
+                  <AuthenticatedRoute allowedRoles={["admin"]}>
+                    <UsersPage />
+                  </AuthenticatedRoute>
+                } />
+                <Route 
+                  path="/admin/assign-cases" 
+                  element={
+                    <AuthenticatedRoute allowedRoles={['admin']}>
+                      <AssignCasesPage />
+                    </AuthenticatedRoute>
+                  } 
+                />
+                
+                {/* Routes accessible to all authenticated users */}
+                <Route path="/complaints" element={
+                  <AuthenticatedRoute>
+                    <ComplaintsPage />
+                  </AuthenticatedRoute>
+                } />
+                <Route path="/complaints/:id" element={
+                  <AuthenticatedRoute>
+                    <ComplaintDetailsPage />
+                  </AuthenticatedRoute>
+                } />
+                <Route path="/recyclable-requests" element={
+                  <AuthenticatedRoute>
+                    <RecyclableRequestsPage />
+                  </AuthenticatedRoute>
+                } />
+                <Route path="/recyclable-requests/:id" element={
+                  <AuthenticatedRoute>
+                    <RecyclableItemDetailsPage />
+                  </AuthenticatedRoute>
+                } />
+                <Route path="/settings" element={
+                  <AuthenticatedRoute>
+                    <SettingsPage />
+                  </AuthenticatedRoute>
+                } />
+                <Route path="/profile" element={
+                  <AuthenticatedRoute>
+                    <ProfilePage />
+                  </AuthenticatedRoute>
+                } />
+                
+                <Route path="/officer-report/:id?" element={
+                  <AuthenticatedRoute>
+                    <OfficerReportPage />
+                  </AuthenticatedRoute>
+                } />
+                
+                <Route path="/officer-profile/:id" element={
+                  <AuthenticatedRoute>
+                    <OfficerProfilePage />
+                  </AuthenticatedRoute>
+                } />
+                
+                {/* Catch-all route */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AnimatePresence>
+          </SidebarProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
