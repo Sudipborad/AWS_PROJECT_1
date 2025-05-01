@@ -37,6 +37,7 @@ import AssignCasesPage from './pages/AssignCasesPage';
 import OfficerReportPage from './pages/OfficerReportPage';
 import OfficerProfilePage from './pages/OfficerProfilePage';
 import AccessDeniedPage from './pages/AccessDeniedPage';
+import MarketplacePage from './pages/MarketplacePage';
 
 const queryClient = new QueryClient();
 
@@ -118,6 +119,11 @@ const App = () => (
                 <Route path="/user-dashboard" element={
                   <AuthenticatedRoute allowedRoles={["user"]}>
                     <UserDashboard />
+                  </AuthenticatedRoute>
+                } />
+                <Route path="/marketplace" element={
+                  <AuthenticatedRoute allowedRoles={["user", "admin"]}>
+                    <MarketplacePage />
                   </AuthenticatedRoute>
                 } />
                 <Route path="/new-complaint" element={

@@ -22,7 +22,8 @@ import {
   Calendar,
   LogOut,
   PackageCheck,
-  BarChart
+  BarChart,
+  ShoppingCart
 } from 'lucide-react';
 
 interface SidebarLinkProps {
@@ -104,6 +105,12 @@ const Sidebar: React.FC = () => {
             title="Recycle Requests" 
             isActive={isActive('/recyclable-requests')} 
           />
+          <SidebarLink 
+            href="/marketplace" 
+            icon={ShoppingCart} 
+            title="Marketplace" 
+            isActive={isActive('/marketplace')} 
+          />
           <Separator className="my-2" />
           <SidebarLink href="/profile" icon={User} title="My Profile" isActive={isActive('/profile')} />
           <SidebarLink href="/settings" icon={Settings} title="Settings" isActive={isActive('/settings')} />
@@ -138,6 +145,7 @@ const Sidebar: React.FC = () => {
         <SidebarLink href="/admin/assign-cases" icon={ClipboardList} title="Assign Cases" isActive={isActive('/admin/assign-cases')} />
         <SidebarLink href="/complaints" icon={MessageSquare} title="All Complaints" isActive={isActive('/complaints')} />
         <SidebarLink href="/recyclable-requests" icon={Recycle} title="Recycle Requests" isActive={isActive('/recyclable-requests')} />
+        <SidebarLink href="/marketplace" icon={ShoppingCart} title="Marketplace" isActive={isActive('/marketplace')} />
         <Separator className="my-2" />
         <SidebarLink href="/profile" icon={User} title="My Profile" isActive={isActive('/profile')} />
         <SidebarLink href="/settings" icon={Settings} title="Settings" isActive={isActive('/settings')} />

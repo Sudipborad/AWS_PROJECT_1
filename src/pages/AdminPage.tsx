@@ -9,7 +9,6 @@ import {
   BarChart3,
   MapPin,
   Trash2,
-  Globe,
   ChevronRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -26,18 +25,11 @@ import { toast } from '@/components/ui/use-toast';
 import { DatePickerWithRange } from "@/components/DatePickerWithRange";
 import { format, subDays } from "date-fns";
 import { DateRange } from "react-day-picker";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import OfficerCard from "@/components/OfficerCard";
 
 const AdminPage = () => {
   const { fetchData } = useSupabase();
   const [loading, setLoading] = useState(true);
-  const [language, setLanguage] = useState('en');
   const [complaints, setComplaints] = useState([]);
   const [stats, setStats] = useState([
     { 
@@ -602,67 +594,6 @@ const AdminPage = () => {
     });
   };
   
-  const translate = (text) => {
-    const translations = {
-      en: {
-        'Admin Dashboard': 'Admin Dashboard',
-        'Overview of system performance and activity': 'Overview of system performance and activity',
-        'Total Users': 'Total Users',
-        'Active Officers': 'Active Officers',
-        'Open Complaints': 'Open Complaints',
-        'Critical Cases': 'Critical Cases',
-        'Statistics': 'Statistics',
-        'Recent Activity': 'Recent Activity',
-        'System events and user authentication activity': 'System events and user authentication activity',
-        'Issue Distribution': 'Issue Distribution',
-        'Complaint Locations': 'Complaint Locations',
-        'Show More': 'Show More',
-        'Export': 'Export',
-        'Fetch Auth Logs': 'Fetch Auth Logs',
-        'No recent activity': 'No recent activity. Click "Fetch Auth Logs" to load authentication events.',
-        'Language': 'Language',
-      },
-      hi: {
-        'Admin Dashboard': 'एडमिन डैशबोर्ड',
-        'Overview of system performance and activity': 'सिस्टम प्रदर्शन और गतिविधि का अवलोकन',
-        'Total Users': 'कुल उपयोगकर्ता',
-        'Active Officers': 'सक्रिय अधिकारी',
-        'Open Complaints': 'खुली शिकायतें',
-        'Critical Cases': 'महत्वपूर्ण मामले',
-        'Statistics': 'आंकड़े',
-        'Recent Activity': 'हाल की गतिविधि',
-        'System events and user authentication activity': 'सिस्टम घटनाएँ और उपयोगकर्ता प्रमाणीकरण गतिविधि',
-        'Issue Distribution': 'समस्या वितरण',
-        'Complaint Locations': 'शिकायत स्थान',
-        'Show More': 'और दिखाएं',
-        'Export': 'निर्यात',
-        'Fetch Auth Logs': 'लॉग प्राप्त करें',
-        'No recent activity': 'कोई हालिया गतिविधि नहीं। प्रमाणीकरण इवेंट लोड करने के लिए "लॉग प्राप्त करें" पर क्लिक करें।',
-        'Language': 'भाषा',
-      },
-      gu: {
-        'Admin Dashboard': 'એડમિન ડેશબોર્ડ',
-        'Overview of system performance and activity': 'સિસ્ટમ પ્રદર્શન અને પ્રવૃત્તિનું અવલોકન',
-        'Total Users': 'કુલ વપરાશકર્તાઓ',
-        'Active Officers': 'સક્રિય અધિકારીઓ',
-        'Open Complaints': 'ખુલ્લી ફરિયાદો',
-        'Critical Cases': 'ગંભીર કેસો',
-        'Statistics': 'આંકડા',
-        'Recent Activity': 'તાજેતરની પ્રવૃત્તિ',
-        'System events and user authentication activity': 'સિસ્ટમ ઘટનાઓ અને વપરાશકર્તા પ્રમાણીકરણ પ્રવૃત્તિ',
-        'Issue Distribution': 'સમસ્યા વિતરણ',
-        'Complaint Locations': 'ફરિયાદ સ્થાનો',
-        'Show More': 'વધુ બતાવો',
-        'Export': 'નિકાસ',
-        'Fetch Auth Logs': 'લોગ મેળવો',
-        'No recent activity': 'કોઈ તાજેતરની પ્રવૃત્તિ નથી. પ્રમાણીકરણ ઘટનાઓ લોડ કરવા માટે "લોગ મેળવો" પર ક્લિક કરો.',
-        'Language': 'ભાષા',
-      }
-    };
-    
-    return translations[language][text] || text;
-  };
-  
   if (loading) {
     return (
       <Layout>
@@ -675,68 +606,51 @@ const AdminPage = () => {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-8 animate-in">
-        <section className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold">{translate('Admin Dashboard')}</h1>
-          <p className="text-muted-foreground">
-                {translate('Overview of system performance and activity')}
-              </p>
-            </div>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
-                  <Globe className="h-4 w-4" />
-                  {translate('Language')}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setLanguage('en')}>
-                  English
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLanguage('hi')}>
-                  हिंदी (Hindi)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLanguage('gu')}>
-                  ગુજરાતી (Gujarati)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="container mx-auto py-6 space-y-6"
+      >
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+            <p className="text-muted-foreground">
+              Overview of system performance and activity
+            </p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {stats.map((stat, index) => (
-              <motion.div
-                key={stat.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-              >
-                <Card className="hover-scale">
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-sm text-muted-foreground">{translate(stat.title)}</p>
-                        <p className="text-3xl font-bold">{stat.value}</p>
-                      </div>
-                      <div className={cn("p-2 rounded-full", stat.bgColor)}>
-                        <stat.icon className={cn("h-5 w-5", stat.color)} />
-                      </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {stats.map((stat, index) => (
+            <motion.div
+              key={stat.title}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.1 }}
+            >
+              <Card className="hover-scale">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm text-muted-foreground">{stat.title}</p>
+                      <p className="text-3xl font-bold">{stat.value}</p>
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </section>
+                    <div className={cn("p-2 rounded-full", stat.bgColor)}>
+                      <stat.icon className={cn("h-5 w-5", stat.color)} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <section className="lg:col-span-2 space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>{translate('Statistics')}</CardTitle>
+                <CardTitle>Statistics</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -875,7 +789,7 @@ const AdminPage = () => {
           <section className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>{translate('Issue Distribution')}</CardTitle>
+                <CardTitle>Issue Distribution</CardTitle>
               </CardHeader>
               <CardContent>
                 {issueDistribution.length > 0 ? (
@@ -907,7 +821,7 @@ const AdminPage = () => {
             
             <Card>
               <CardHeader>
-                <CardTitle>{translate('Complaint Locations')}</CardTitle>
+                <CardTitle>Complaint Locations</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="bg-muted h-[200px] rounded-md flex items-center justify-center">
@@ -933,9 +847,9 @@ const AdminPage = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div>
-                <CardTitle>{translate('Recent Activity')}</CardTitle>
+                <CardTitle>Recent Activity</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {translate('System events and user authentication activity')}
+                  System events and user authentication activity
                 </p>
               </div>
               <div className="flex items-center space-x-2">
@@ -946,7 +860,7 @@ const AdminPage = () => {
                   onClick={fetchUserLogs} 
                   disabled={loadingLogs}
                 >
-                  {loadingLogs ? 'Loading...' : translate('Fetch Auth Logs')}
+                  {loadingLogs ? 'Loading...' : 'Fetch Auth Logs'}
                 </Button>
                 {userLogs.length > 0 && (
                   <Button 
@@ -954,7 +868,7 @@ const AdminPage = () => {
                     size="sm" 
                     onClick={downloadLogsAsExcel}
                   >
-                    {translate('Export')}
+                    Export
                   </Button>
                 )}
               </div>
@@ -985,7 +899,7 @@ const AdminPage = () => {
                 </div>
               ) : (
                 <div className="text-center p-4">
-                  <p className="text-muted-foreground">{translate('No recent activity')}</p>
+                  <p className="text-muted-foreground">No recent activity</p>
                 </div>
               )}
               {recentActivities.length > 0 && (
@@ -1027,7 +941,7 @@ const AdminPage = () => {
                       }
                     }}
                   >
-                    {translate('Show More')}
+                    Show More
                   </Button>
               </div>
               )}
@@ -1066,7 +980,7 @@ const AdminPage = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
     </Layout>
   );
 };
