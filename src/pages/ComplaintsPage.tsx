@@ -39,115 +39,41 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
+interface Complaint {
+  id: string;
+  title: string;
+  description: string;
+  location: string;
+  coordinates: Coordinates | null;
+  status: 'pending' | 'assigned' | 'inProgress' | 'resolved';
+  date: string;
+  time: string;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  area: string;
+  reporter: {
+    name: string;
+    contact: string;
+  };
+  assignedTo: string | null;
+  hasImage: boolean;
+  imageUrl: string | null;
+}
+
 const ComplaintsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
-  const [complaints, setComplaints] = useState([]);
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   
-  const { fetchData } = useSupabase();
+  const { fetchData, supabase } = useSupabase();
   const { userId, userRole } = useAuth();
-
-  useEffect(() => {
-    const loadComplaints = async () => {
-      try {
-        let complaintsData;
-        
-        // Filter complaints based on user role
-        if (userRole === 'admin') {
-          // Admins can see all complaints
-          complaintsData = await fetchData('complaints');
-        } else if (userRole === 'officer') {
-          // Officers can see complaints in their area or assigned to them
-          const allComplaints = await fetchData('complaints');
-          const officerData = await fetchData('users', {
-            filter: { clerk_id: userId },
-            single: true
-          });
-          
-          let officerArea = 'unassigned';
-          
-          if (officerData && officerData.area) {
-            officerArea = officerData.area.toLowerCase();
-          } else if (userId === 'officer1') {
-            officerArea = 'bopal';
-          } else if (userId === 'officer2') {
-            officerArea = 'south bopal';
-          }
-          
-          complaintsData = allComplaints.filter(c => {
-            const isAssignedToMe = c.assigned_to === userId;
-            const complaintArea = (c.area || '').toLowerCase();
-            const isInMyArea = officerArea === 'bopal' ? 
-              (complaintArea === 'bopal' || (complaintArea.includes('bopal') && !complaintArea.includes('south'))) :
-              officerArea === 'south bopal' ?
-              (complaintArea === 'south bopal' || (complaintArea.includes('south') && complaintArea.includes('bopal'))) :
-              false;
-            
-            return isAssignedToMe || isInMyArea;
-          });
-        } else {
-          // Regular users can only see their own complaints
-          complaintsData = await fetchData('complaints', {
-            filter: { user_id: userId }
-          });
-        }
-        
-        // Add console log for debugging
-        console.log(`Filtered complaints for ${userRole} (${userId}):`, complaintsData);
-        
-        const users = await fetchData('users');
-        
-        const formattedComplaints = complaintsData.map(complaint => {
-          const submitter = users.find(u => u.clerk_id === complaint.user_id);
-          const assignedOfficer = users.find(u => u.clerk_id === complaint.assigned_to);
-          
-          return {
-            id: complaint.id,
-            title: complaint.title,
-            description: complaint.description,
-            location: complaint.location || 'Location not specified',
-            coordinates: complaint.coordinates || null,
-            status: complaint.status || 'pending',
-            date: complaint.created_at,
-            time: new Date(complaint.created_at).toLocaleTimeString(),
-            priority: complaint.priority || 'medium',
-            area: complaint.area || 'unassigned',
-            reporter: {
-              name: submitter ? `${submitter.firstName} ${submitter.lastName}` : 'Unknown User',
-              contact: submitter?.email || 'No contact information'
-            },
-            assignedTo: assignedOfficer ? `${assignedOfficer.firstName} ${assignedOfficer.lastName}` : null,
-            hasImage: !!complaint.image_url,
-            imageUrl: complaint.image_url || null
-          };
-        });
-        
-        setComplaints(formattedComplaints);
-      } catch (error) {
-        console.error('Error loading complaints:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadComplaints();
-  }, [userId, userRole, fetchData]);
-
-  const filteredComplaints = complaints.filter(complaint => {
-    const matchesSearch = 
-      !searchTerm || 
-      complaint.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      complaint.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      complaint.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(complaint.status);
-    const matchesPriority = priorityFilter.length === 0 || priorityFilter.includes(complaint.priority);
-    
-    return matchesSearch && matchesStatus && matchesPriority;
-  });
 
   const statusColors = {
     pending: { color: 'text-amber-500', bg: 'bg-amber-50' },
@@ -162,6 +88,215 @@ const ComplaintsPage = () => {
     high: 'bg-amber-500',
     critical: 'bg-red-500'
   };
+
+  const filteredComplaints = complaints.filter(complaint => {
+    const matchesSearch = 
+      !searchTerm || 
+      complaint.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      complaint.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      complaint.id.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(complaint.status);
+    const matchesPriority = priorityFilter.length === 0 || priorityFilter.includes(complaint.priority);
+    
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
+
+  // Function to parse coordinates string into object
+  const parseCoordinates = (location: string): Coordinates | null => {
+    try {
+      const matches = location.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
+      if (matches) {
+        return {
+          latitude: parseFloat(matches[1]),
+          longitude: parseFloat(matches[2])
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error parsing coordinates:', error);
+      return null;
+    }
+  };
+
+  // Function to format complaints
+  const formatComplaints = (complaintsData: any[], users: any[]): Complaint[] => {
+    return (complaintsData || []).map(complaint => {
+      const submitter = users.find(u => u.clerk_id === complaint.user_id);
+      const assignedOfficer = users.find(u => u.clerk_id === complaint.assigned_to);
+      
+      // Handle location and coordinates
+      let location = complaint.location || 'Location not specified';
+      let coordinates = null;
+
+      if (typeof complaint.coordinates === 'object' && complaint.coordinates !== null) {
+        coordinates = complaint.coordinates;
+      } else if (typeof location === 'string') {
+        coordinates = parseCoordinates(location);
+      }
+      
+      const formattedComplaint: Complaint = {
+        id: complaint.id,
+        title: complaint.title || '',
+        description: complaint.description || '',
+        location: location,
+        coordinates: coordinates,
+        status: (complaint.status as Complaint['status']) || 'pending',
+        date: complaint.created_at,
+        time: new Date(complaint.created_at).toLocaleTimeString(),
+        priority: (complaint.priority as Complaint['priority']) || 'medium',
+        area: complaint.area || 'unassigned',
+        reporter: {
+          name: submitter ? `${submitter.first_name} ${submitter.last_name}` : 'Unknown User',
+          contact: submitter?.email || 'No contact information'
+        },
+        assignedTo: assignedOfficer ? `${assignedOfficer.first_name} ${assignedOfficer.last_name}` : null,
+        hasImage: !!complaint.image_url,
+        imageUrl: complaint.image_url || null
+      };
+
+      console.log('Formatted complaint:', JSON.stringify(formattedComplaint, null, 2));
+      return formattedComplaint;
+    });
+  };
+
+  // Function to load complaints
+  const loadComplaints = async () => {
+    try {
+      console.log('Loading complaints for role:', userRole);
+      console.log('User ID:', userId);
+      
+      // Wait for both auth and role to be initialized
+      if (!userId || !userRole) {
+        console.log('Waiting for user authentication and role...');
+        return;
+      }
+
+      setLoading(true);
+      
+      let complaintsData;
+      
+      // Filter complaints based on user role
+      if (userRole === 'admin') {
+        console.log('Fetching complaints for admin...');
+        const { data, error } = await supabase
+          .from('complaints')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+        complaintsData = data;
+        console.log('Admin complaints fetched:', data?.length);
+      } else if (userRole === 'officer') {
+        console.log('Fetching complaints for officer...');
+        const { data: allComplaints, error: complaintsError } = await supabase
+          .from('complaints')
+          .select('*')
+          .order('created_at', { ascending: false });
+          
+        if (complaintsError) throw complaintsError;
+        console.log('All complaints fetched:', allComplaints?.length);
+        
+        const { data: officerData, error: officerError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('clerk_id', userId)
+          .single();
+          
+        if (officerError) throw officerError;
+        console.log('Officer data:', JSON.stringify(officerData, null, 2));
+        
+        let officerArea = officerData?.area?.toLowerCase() || 'unassigned';
+        console.log('Officer area:', officerArea);
+        
+        complaintsData = allComplaints.filter(c => {
+          const isAssigned = c.assigned_to === userId;
+          const complaintArea = (c.area || '').toLowerCase().trim();
+          const isInArea = officerArea !== 'unassigned' && complaintArea && (
+            complaintArea === officerArea ||
+            (officerArea === 'bopal' && 
+             complaintArea.includes('bopal') && 
+             !complaintArea.includes('south')) ||
+            (officerArea === 'south bopal' && 
+             complaintArea.includes('south bopal'))
+          );
+
+          console.log(`Complaint ${c.id}: assigned=${isAssigned}, area=${complaintArea}, inArea=${isInArea}`);
+          return isAssigned || isInArea;
+        });
+        
+        console.log('Filtered officer complaints:', complaintsData?.length);
+      } else {
+        console.log('Fetching complaints for regular user...');
+        const { data, error } = await supabase
+          .from('complaints')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+        complaintsData = data;
+        console.log('User complaints fetched:', data?.length);
+      }
+
+      // Fetch users for additional complaint details
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('*');
+        
+      if (usersError) throw usersError;
+      console.log('Users fetched:', users?.length);
+      
+      const formattedComplaints = formatComplaints(complaintsData, users);
+      console.log('Setting formatted complaints:', JSON.stringify(formattedComplaints, null, 2));
+      setComplaints(formattedComplaints);
+    } catch (error) {
+      console.error('Error loading complaints:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    loadComplaints();
+  }, [userId, userRole]);
+
+  // Set up real-time subscription
+  useEffect(() => {
+    if (!userId || !userRole) return;
+
+    // Subscribe to new complaints
+    const subscription = supabase
+      .channel('complaints_channel')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'complaints'
+        },
+        (payload) => {
+          console.log('Received real-time update:', payload);
+          loadComplaints(); // Reload all complaints when there's an update
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [userId, userRole]);
+
+  // Debug logging for render cycle
+  console.log('Current state:', {
+    loading,
+    complaintsCount: complaints.length,
+    filteredCount: filteredComplaints?.length || 0,
+    userRole,
+    userId,
+    complaints: JSON.stringify(complaints, null, 2)
+  });
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -339,71 +474,100 @@ const ComplaintsPage = () => {
         </div>
 
         {/* Complaints Table */}
-        <Card>
+        <Card className="w-full">
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredComplaints.map((complaint) => (
-                  <TableRow key={complaint.id}>
-                    <TableCell className="font-mono text-sm">#{complaint.id.slice(0, 8)}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">{complaint.title}</div>
-                      <div className="text-sm text-muted-foreground">{complaint.description.slice(0, 50)}...</div>
-                    </TableCell>
-                    <TableCell>
+            <div className="relative w-full overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[100px]">ID</TableHead>
+                    <TableHead className="min-w-[200px]">Title</TableHead>
+                    <TableHead className="w-[100px]">Status</TableHead>
+                    <TableHead className="w-[100px]">Priority</TableHead>
+                    <TableHead className="min-w-[150px]">Location</TableHead>
+                    <TableHead className="w-[150px]">Date</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-24 text-center">
+                        <div className="flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredComplaints && filteredComplaints.length > 0 ? (
+                    filteredComplaints.map((complaint) => {
+                      console.log('Rendering complaint:', JSON.stringify(complaint, null, 2));
+                      return (
+                        <TableRow key={complaint.id} className="hover:bg-muted/50">
+                          <TableCell className="font-mono text-sm">
+                            #{complaint.id.slice(0, 8)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{complaint.title || 'No Title'}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {complaint.description ? complaint.description.slice(0, 50) + '...' : 'No description'}
+                            </div>
+                          </TableCell>
+                          <TableCell>
                             <div className={cn(
-                        "px-2 py-1 rounded-full text-xs w-fit",
-                              statusColors[complaint.status]?.bg,
-                              statusColors[complaint.status]?.color
+                              "px-2 py-1 rounded-full text-xs w-fit",
+                              statusColors[complaint.status]?.bg || statusColors.pending.bg,
+                              statusColors[complaint.status]?.color || statusColors.pending.color
                             )}>
                               {complaint.status}
                             </div>
-                    </TableCell>
-                    <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <div className={cn(
-                          "w-2 h-2 rounded-full",
-                                      priorityColors[complaint.priority]
-                                    )} />
-                        <span className="text-sm capitalize">{complaint.priority}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{complaint.location}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">{formatDate(complaint.date)}</div>
-                      <div className="text-xs text-muted-foreground">{complaint.time}</div>
-                    </TableCell>
-                    <TableCell>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => navigate(`/complaints/${complaint.id}`)}
-                        className="flex items-center gap-2"
-                      >
-                        <Eye className="h-4 w-4" />
-                        View Details
-                        </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className={cn(
+                                "w-2 h-2 rounded-full",
+                                priorityColors[complaint.priority]
+                              )} />
+                              <span className="text-sm capitalize">{complaint.priority}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm truncate max-w-[200px]" title={complaint.location}>
+                                {complaint.location}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">{formatDate(complaint.date)}</div>
+                            <div className="text-xs text-muted-foreground">{complaint.time}</div>
+                          </TableCell>
+                          <TableCell>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => navigate(`/complaints/${complaint.id}`)}
+                              className="flex items-center gap-2 w-full"
+                            >
+                              <Eye className="h-4 w-4" />
+                              <span>View</span>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-24 text-center">
+                        <div className="text-muted-foreground">
+                          No complaints found
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       </div>

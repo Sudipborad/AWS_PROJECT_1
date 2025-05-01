@@ -449,19 +449,7 @@ const ScheduleItem = ({ item, typeColors, onComplete, userRole }) => {
           </div>
         </div>
         
-        {(userRole === 'officer' && !item.status && 
-         ((item.type === 'complaint' && item.complaintId) || 
-          (item.type === 'recycling' && item.recyclingId))) && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="ml-2"
-            onClick={() => onComplete(item)}
-          >
-            <Check className="h-4 w-4 mr-1" />
-            Mark Complete
-          </Button>
-        )}
+        
       </div>
     </motion.div>
   );

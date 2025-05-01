@@ -1,5 +1,6 @@
 import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { useEffect } from 'react';
 
 /**
  * Custom hook for Supabase database operations with Clerk authentication
@@ -15,7 +16,7 @@ export const useSupabase = () => {
     options?: {
       columns?: string;
       filter?: Record<string, any>;
-      order?: { column: string; ascending?: boolean };
+      orderBy?: { column: string; ascending?: boolean };
       limit?: number;
       single?: boolean;
     }
@@ -37,9 +38,11 @@ export const useSupabase = () => {
       }
 
       // Apply ordering if provided
-      if (options?.order) {
-        query = query.order(options.order.column, {
-          ascending: options.order.ascending ?? false,
+      if (options?.orderBy) {
+        console.log(`Applying order to ${table}:`, options.orderBy);
+        query = query.order(options.orderBy.column, {
+          ascending: options.orderBy.ascending ?? false,
+          nullsFirst: false
         });
       }
 
@@ -299,6 +302,43 @@ export const useSupabase = () => {
       return false;
     }
   };
+
+  /**
+   * Run database migrations
+   */
+  const runMigrations = async () => {
+    try {
+      console.log('Running database migrations...');
+      
+      // Add assigned_to and assigned_at columns to complaints table
+      await supabase.rpc('execute_sql', {
+        sql: `
+          ALTER TABLE complaints ADD COLUMN IF NOT EXISTS assigned_to TEXT;
+          ALTER TABLE complaints ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMPTZ;
+          
+          -- Add indexes for better performance
+          CREATE INDEX IF NOT EXISTS idx_complaints_assigned_to ON complaints(assigned_to);
+          CREATE INDEX IF NOT EXISTS idx_complaints_area ON complaints(area);
+          
+          -- Update existing complaints to have assigned_to match user_id for testing
+          UPDATE complaints 
+          SET assigned_to = user_id
+          WHERE assigned_to IS NULL;
+        `
+      });
+      
+      console.log('Database migrations completed successfully');
+      return true;
+    } catch (error) {
+      console.error('Error running migrations:', error);
+      return false;
+    }
+  };
+
+  // Run migrations when the hook is first used
+  useEffect(() => {
+    runMigrations();
+  }, []);
 
   return {
     fetchData,

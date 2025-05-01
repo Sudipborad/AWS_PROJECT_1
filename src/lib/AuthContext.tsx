@@ -4,143 +4,111 @@ import { supabase } from './supabase';
 
 // Context interface
 interface AuthContextType {
-  isAuthenticated: boolean;
   userId: string | null;
   userRole: string | null;
-  userMetadata: Record<string, any> | null;
-  loading: boolean;
+  isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
-// Default context values
-const defaultContext: AuthContextType = {
-  isAuthenticated: false,
+// Create context
+const AuthContext = createContext<AuthContextType>({
   userId: null,
   userRole: null,
-  userMetadata: null,
-  loading: true,
-};
-
-// Create context
-const AuthContext = createContext<AuthContextType>(defaultContext);
+  isAuthenticated: false,
+  isLoading: true
+});
 
 // Context provider component
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isLoaded } = useUser();
-  const [authState, setAuthState] = useState<AuthContextType>(defaultContext);
+  const { user, isLoaded: isClerkLoaded } = useUser();
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Update auth state when Clerk user changes
-    if (isLoaded) {
-      // Validate and enforce role
-      const role = (user?.publicMetadata.role as string) || 'user';
-      const validRoles = ['user', 'officer', 'admin'];
-      
-      if (!validRoles.includes(role)) {
-        console.error('Invalid role detected, defaulting to user');
-        // Update user metadata with valid role
-        if (user) {
-          user.update({
-            publicMetadata: {
-              ...user.publicMetadata,
-              role: 'user'
+    const initializeAuth = async () => {
+      try {
+        if (!isClerkLoaded) {
+          console.log('Waiting for Clerk to load...');
+          return;
+        }
+
+        if (!user) {
+          console.log('No user logged in');
+          setUserId(null);
+          setUserRole(null);
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('User loaded from Clerk:', user.id);
+        setUserId(user.id);
+
+        // Fetch user data from Supabase
+        const { data: userData, error } = await supabase
+          .from('users')
+          .select('role')
+          .eq('clerk_id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching user role:', error);
+          // Create user if not found
+          if (error.code === 'PGRST116') {
+            console.log('User not found in Supabase, creating...');
+            const { data: newUser, error: createError } = await supabase
+              .from('users')
+              .insert({
+                clerk_id: user.id,
+                email: user.emailAddresses[0]?.emailAddress,
+                first_name: user.firstName,
+                last_name: user.lastName,
+                role: 'user'  // Default role
+              })
+              .select()
+              .single();
+
+            if (createError) {
+              console.error('Error creating user:', createError);
+            } else {
+              console.log('Successfully created user:', newUser);
+              setUserRole(newUser.role);
             }
-          });
-        }
-      }
-
-      setAuthState({
-        isAuthenticated: !!user,
-        userId: user?.id || null,
-        userRole: role,
-        userMetadata: user?.publicMetadata as Record<string, any> || null,
-        loading: false,
-      });
-
-      // If user is authenticated, sync user data with Supabase
-      if (user) {
-        syncUserWithSupabase(user);
-      }
-    }
-  }, [user, isLoaded]);
-
-  // Function to sync Clerk user with Supabase
-  const syncUserWithSupabase = async (clerkUser: any) => {
-    try {
-      console.log('Syncing user with Supabase:', clerkUser.id);
-      
-      if (!clerkUser.id) {
-        console.error('Error: Clerk user ID is missing!');
-        return;
-      }
-      
-      if (!clerkUser.publicMetadata || Object.keys(clerkUser.publicMetadata).length === 0) {
-        console.log('Warning: Clerk user has no public metadata. Setting default role to "user"');
-      }
-      
-      // Check if user already exists in Supabase
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('clerk_id', clerkUser.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error checking user in Supabase:', error);
-        return;
-      }
-
-      const userData = {
-        clerk_id: clerkUser.id,
-        email: clerkUser.emailAddresses?.[0]?.emailAddress || '',
-        first_name: clerkUser.firstName || '',
-        last_name: clerkUser.lastName || '',
-        avatar_url: clerkUser.imageUrl || '',
-        role: clerkUser.publicMetadata?.role || 'user',
-        updated_at: new Date().toISOString(),
-      };
-
-      console.log('User data to sync with Supabase:', userData);
-
-      if (data) {
-        // User exists, update if needed
-        console.log('Updating existing user in Supabase');
-        const { error: updateError } = await supabase
-          .from('users')
-          .update(userData)
-          .eq('clerk_id', clerkUser.id);
-          
-        if (updateError) {
-          console.error('Error updating user in Supabase:', updateError);
+          }
         } else {
-          console.log('Successfully updated user in Supabase');
+          console.log('User role fetched:', userData.role);
+          setUserRole(userData.role);
         }
-      } else {
-        // User doesn't exist, create new record
-        console.log('Creating new user in Supabase');
-        const { error: insertError } = await supabase
-          .from('users')
-          .insert({
-            ...userData,
-            created_at: new Date().toISOString(),
-          });
-          
-        if (insertError) {
-          console.error('Error inserting user in Supabase:', insertError);
-        } else {
-          console.log('Successfully created new user in Supabase');
-        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error in auth initialization:', error);
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error syncing user with Supabase:', error);
-    }
+    };
+
+    initializeAuth();
+  }, [user, isClerkLoaded]);
+
+  const value = {
+    userId,
+    userRole,
+    isAuthenticated: !!userId,
+    isLoading
   };
 
   return (
-    <AuthContext.Provider value={authState}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 // Hook to use auth context
-export const useAuth = () => useContext(AuthContext); 
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}; 

@@ -83,7 +83,8 @@ try {
             first_name: 'Officer',
             last_name: 'One',
             role: 'officer',
-            meta: { area: 'bopal' } // Store area in the meta JSON field
+            area: 'bopal',
+            status: 'active'
           })
           .select();
         
@@ -94,23 +95,24 @@ try {
           officer1Id = createOfficer1Result[0].id;
         }
       } else {
-        console.log('Officer1 already exists:', existingOfficer1);
+        console.log('Officer1 already exists, updating...');
         officer1Id = existingOfficer1.id;
         
-        // Update the meta field to include area
-        const meta = existingOfficer1.meta || {};
-        meta.area = 'bopal';
-        
-        const { data: updateMetaResult, error: updateMetaError } = await supabase
+        // Update officer1
+        const { data: updateOfficer1Result, error: updateOfficer1Error } = await supabase
           .from('users')
-          .update({ meta })
+          .update({
+            role: 'officer',
+            area: 'bopal',
+            status: 'active'
+          })
           .eq('id', officer1Id)
           .select();
         
-        if (updateMetaError) {
-          console.error('Error updating officer1 meta:', updateMetaError);
+        if (updateOfficer1Error) {
+          console.error('Error updating officer1:', updateOfficer1Error);
         } else {
-          console.log('Successfully updated officer1 meta with area:', updateMetaResult);
+          console.log('Successfully updated officer1:', updateOfficer1Result);
         }
       }
 
@@ -139,7 +141,8 @@ try {
             first_name: 'Officer',
             last_name: 'Two',
             role: 'officer',
-            meta: { area: 'south bopal' } // Store area in the meta JSON field
+            area: 'south bopal',
+            status: 'active'
           })
           .select();
         
@@ -150,23 +153,24 @@ try {
           officer2Id = createOfficer2Result[0].id;
         }
       } else {
-        console.log('Officer2 already exists:', existingOfficer2);
+        console.log('Officer2 already exists, updating...');
         officer2Id = existingOfficer2.id;
         
-        // Update the meta field to include area
-        const meta = existingOfficer2.meta || {};
-        meta.area = 'south bopal';
-        
-        const { data: updateMetaResult, error: updateMetaError } = await supabase
+        // Update officer2
+        const { data: updateOfficer2Result, error: updateOfficer2Error } = await supabase
           .from('users')
-          .update({ meta })
+          .update({
+            role: 'officer',
+            area: 'south bopal',
+            status: 'active'
+          })
           .eq('id', officer2Id)
           .select();
         
-        if (updateMetaError) {
-          console.error('Error updating officer2 meta:', updateMetaError);
+        if (updateOfficer2Error) {
+          console.error('Error updating officer2:', updateOfficer2Error);
         } else {
-          console.log('Successfully updated officer2 meta with area:', updateMetaResult);
+          console.log('Successfully updated officer2:', updateOfficer2Result);
         }
       }
       

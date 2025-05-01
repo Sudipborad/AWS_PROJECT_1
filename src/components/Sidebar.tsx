@@ -142,7 +142,6 @@ const Sidebar: React.FC = () => {
         <SidebarLink href="/admin" icon={LayoutDashboard} title="Admin Dashboard" isActive={isActive('/admin')} />
         <SidebarLink href="/officers" icon={ShieldCheck} title="Officers" isActive={isActive('/officers')} />
         <SidebarLink href="/users" icon={Users} title="Users" isActive={isActive('/users')} />
-        <SidebarLink href="/admin/assign-cases" icon={ClipboardList} title="Assign Cases" isActive={isActive('/admin/assign-cases')} />
         <SidebarLink href="/complaints" icon={MessageSquare} title="All Complaints" isActive={isActive('/complaints')} />
         <SidebarLink href="/recyclable-requests" icon={Recycle} title="Recycle Requests" isActive={isActive('/recyclable-requests')} />
         <SidebarLink href="/marketplace" icon={ShoppingCart} title="Marketplace" isActive={isActive('/marketplace')} />
