@@ -1,120 +1,92 @@
-# Waste Management System
+# EcoGuardian - Waste Management System
 
-A modern web application built with React, TypeScript, and Clerk for authentication. This system helps manage waste collection and recycling processes with different user roles (Admin, Officer, and User).
+EcoGuardian is a modern waste management and recycling platform designed to streamline operations between city administrators, waste management officers, and citizens.
 
-## Features
+## 🚀 Migration Update
 
-- 🔐 Authentication with Clerk
-- 👥 Role-based access control (Admin, Officer, User)
-- 📱 Responsive design with Tailwind CSS
-- 🎯 Real-time updates with React Query
-- 📝 Complaint management system
-- ♻️ Recycling request handling
-- 📊 Officer scheduling and reporting
-- 🎨 Modern UI with Shadcn components
+This application has been successfully migrated from a Supabase/Clerk managed infrastructure to a self-hosted **Node.js Express** backend with a **PostgreSQL** database.
 
-## Getting Started
+## 🏗️ Technical Architecture
+
+- **Frontend**: React 18 with Vite, TypeScript, and Tailwind CSS.
+- **Backend**: Node.js & Express REST API.
+- **Database**: PostgreSQL for persistent data storage.
+- **Authentication**: Custom JWT-based authentication with Bcrypt password hashing.
+- **File Storage**: Local filesystem storage for complaint and recycling images.
+- **UI Components**: Shadcn UI, Lucide Icons, and Framer Motion for animations.
+
+## 🛠️ Getting Started
 
 ### Prerequisites
 
-- Node.js (version specified in `.nvmrc`)
-- npm (comes with Node.js)
+- **Node.js**: v18 or later.
+- **PostgreSQL**: A running instance (local or remote).
+- **npm**: Comes with Node.js.
 
 ### Installation
 
-1. Clone the repository:
-```bash
-git clone [your-repo-url]
-cd [your-project-name]
-```
+1. **Clone the repository**:
+   ```bash
+   git clone [your-repo-url]
+   cd sgp
+   ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+2. **Install dependencies**:
+   ```bash
+   npm install
+   ```
 
-3. Create a `.env` file in the root directory and add your Clerk keys:
-```env
-VITE_CLERK_PUBLISHABLE_KEY=your_publishable_key
-VITE_CLERK_SECRET_KEY=your_secret_key
-```
+3. **Configure Environment Variables**:
+   Create a `.env` file in the root directory:
+   ```env
+   # Backend Configuration
+   API_PORT=3001
+   JWT_SECRET=your_super_secret_key
+   STORAGE_PATH=C:\eco_guardian_storage # Path for uploaded images
 
-4. Start the development server:
-```bash
-npm run dev
-```
+   # Database Configuration
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_NAME=ecoguardian
+   DB_USER=postgres
+   DB_PASSWORD=your_password
+   ```
 
-The application will be available at `http://localhost:8080`
+4. **Initialize the Database**:
+   The backend server automatically initializes tables on startup.
 
-### Building for Production
+### Development Commands
 
-```bash
-npm run build
-```
+You can run the frontend and backend simultaneously or separately:
 
-## User Roles and Features
+- **Run All (Recommended)**: `npm run dev:all`
+- **Frontend Only**: `npm run dev` (Runs on port 8080)
+- **Backend Only**: `npm run dev:server` (Runs on port 3001)
 
-### Admin
-- Manage officers
-- Assign cases
-- View all complaints and requests
-- Access system analytics
+## 🔐 Default Credentials
 
-### Officer
-- View assigned cases
-- Update case status
-- Manage schedule
-- Generate reports
+For testing purposes, the following accounts have been seeded:
 
-### User
-- Submit complaints
-- Request recycling pickup
-- Track request status
-- Update profile
+- **Admin**: `admin@ecoguardian.com` / `admin123`
+- **Officer 1**: `officer1@ecoguardian.com` / `officer123`
+- **Officer 2**: `officer2@ecoguardian.com` / `officer123`
 
-## Checking Your Clerk Email
+## 👥 User Roles
 
-To check which email you used to log in:
+### 🏛️ Admin
+- Complete oversight of the system.
+- Manage officers and assign areas of responsibility.
+- Monitor city-wide waste statistics and performance reports.
 
-1. In your code, you can access the user's email using the Clerk `useUser` hook:
-```typescript
-import { useUser } from "@clerk/clerk-react";
+### 👮 Officer
+- Manage assigned collection tasks and complaints.
+- Real-time status updates for citizens.
+- Daily scheduling and performance tracking.
 
-const YourComponent = () => {
-  const { user } = useUser();
-  const primaryEmail = user?.primaryEmailAddress?.emailAddress;
-  
-  return <div>Logged in as: {primaryEmail}</div>;
-};
-```
+### 👤 Citizen (User)
+- Report waste issues with photos and GPS location.
+- Schedule recyclable pick-ups.
+- Track the progress of their requests in real-time.
 
-2. In the Clerk Dashboard:
-   - Go to [dashboard.clerk.com](https://dashboard.clerk.com)
-   - Select your application
-   - Click on "Users" in the sidebar
-   - Find your user and click to view details
-   - Your email will be listed under "Email addresses"
-
-## Deployment
-
-This project is configured for deployment on Vercel:
-
-1. Push your changes to GitHub
-2. Connect your repository to Vercel
-3. Vercel will automatically deploy your application
-
-## Tech Stack
-
-- React 18
-- TypeScript
-- Vite
-- Tailwind CSS
-- Clerk Authentication
-- React Query
-- React Router DOM
-- Shadcn UI Components
-- Framer Motion
-
-## Support
-
-For any issues or questions, please open an issue in the repository. 
+## 📁 Storage
+Uploaded images are stored locally in the path defined by `STORAGE_PATH`. The backend serves these files statically via the `/uploads` route.
