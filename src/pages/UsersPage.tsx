@@ -1,25 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  Users, 
-  Search, 
-  Plus, 
-  MoreHorizontal, 
-  Mail, 
-  MapPin, 
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+  Users,
+  Search,
+  Plus,
+  MoreHorizontal,
+  Mail,
+  MapPin,
   Calendar,
   MessageSquare,
   User,
   UserPlus,
   Shield,
-  Filter
-} from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+  Filter,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,108 +28,116 @@ import {
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
   DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
-import Layout from '@/components/Layout';
-import { cn } from '@/lib/utils';
-import { useSupabase } from '@/hooks/useSupabase';
-import { Spinner } from '@/components/Spinner';
-import { format } from 'date-fns';
+} from "@/components/ui/dropdown-menu";
+import Layout from "@/components/Layout";
+import { cn } from "@/lib/utils";
+import { useApi } from "@/hooks/useApi";
+import { Spinner } from "@/components/Spinner";
+import { format } from "date-fns";
 
 const UsersPage = () => {
-  const { fetchData } = useSupabase();
-  const [searchTerm, setSearchTerm] = useState('');
+  const { fetchUsers: fetchUsersApi, fetchComplaints } = useApi();
+  const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('all');
-  
+  const [activeTab, setActiveTab] = useState("all");
+
   // Fetch user data from Supabase
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        
-        // Fetch users from Supabase
-        const usersData = await fetchData('users');
-        
+
+        // Fetch users from useApi
+        const usersData = await fetchUsersApi();
+
         if (!Array.isArray(usersData)) {
-          console.error('Failed to fetch users data');
+          console.error("Failed to fetch users data");
           return;
         }
-        
+
         // Only show regular users (not admins, officers or moderators)
-        const filteredUsersData = usersData.filter(user => 
-          user.role === 'user'
+        const filteredUsersData = usersData.filter(
+          (user) => user.role === "user",
         );
-        
-        console.log("Filtered users data (only role='user'):", filteredUsersData);
-        
+
+        console.log(
+          "Filtered users data (only role='user'):",
+          filteredUsersData,
+        );
+
         // Fetch complaints to count per user
-        const complaints = await fetchData('complaints');
-        
+        const complaints = await fetchComplaints();
+
         // Format user data with additional info
-        const formattedUsers = filteredUsersData.map(user => {
+        const formattedUsers = filteredUsersData.map((user) => {
           // Count complaints submitted by this user
-          const userComplaints = Array.isArray(complaints) 
-            ? complaints.filter(c => c.user_id === user.clerk_id).length 
+          const userComplaints = Array.isArray(complaints)
+            ? complaints.filter((c) => c.user_id === user.clerk_id).length
             : 0;
-          
+
           // Generate initials for avatar
-          const initials = `${user.first_name?.charAt(0) || ''}${user.last_name?.charAt(0) || ''}`;
-          
+          const initials = `${user.first_name?.charAt(0) || ""}${user.last_name?.charAt(0) || ""}`;
+
           // Format user object with required fields
           return {
-            id: user.id || '',
-            clerk_id: user.clerk_id || '',
-            name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
-            email: user.email || '',
-            location: user.location || 'Location not specified',
-            role: user.role || 'user',
-            status: user.is_active === false ? 'inactive' : 'active',
-            joinDate: user.created_at ? format(new Date(user.created_at), 'yyyy-MM-dd') : 'Unknown',
+            id: user.id || "",
+            clerk_id: user.clerk_id || "",
+            name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
+            email: user.email || "",
+            location: user.location || "Location not specified",
+            role: user.role || "user",
+            status: user.is_active === false ? "inactive" : "active",
+            joinDate: user.created_at
+              ? format(new Date(user.created_at), "yyyy-MM-dd")
+              : "Unknown",
             complaints: userComplaints,
-            avatar: initials || '??'
+            avatar: initials || "??",
           };
         });
-        
+
         setUsers(formattedUsers);
       } catch (error) {
-        console.error('Error fetching users:', error);
+        console.error("Error fetching users:", error);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array to ensure it only runs once on mount
 
   // Filter users based on search term, role filter, and active tab
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = users.filter((user) => {
     // Filter by search term
-    const matchesSearch = 
-      !searchTerm || 
+    const matchesSearch =
+      !searchTerm ||
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.location.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     // Filter by selected roles
-    const matchesRole = roleFilter.length === 0 || roleFilter.includes(user.role);
-    
+    const matchesRole =
+      roleFilter.length === 0 || roleFilter.includes(user.role);
+
     // Filter by tab
-    if (activeTab === 'all') return matchesSearch && matchesRole;
-    if (activeTab === 'active') return matchesSearch && matchesRole && user.status === 'active';
-    if (activeTab === 'inactive') return matchesSearch && matchesRole && user.status === 'inactive';
-    
+    if (activeTab === "all") return matchesSearch && matchesRole;
+    if (activeTab === "active")
+      return matchesSearch && matchesRole && user.status === "active";
+    if (activeTab === "inactive")
+      return matchesSearch && matchesRole && user.status === "inactive";
+
     return matchesSearch && matchesRole;
   });
 
   // Role badge color mapping
   const roleBadgeVariants: Record<string, string> = {
-    user: 'default',
-    admin: 'destructive',
-    moderator: 'warning',
-    officer: 'success'
+    user: "default",
+    admin: "destructive",
+    moderator: "warning",
+    officer: "success",
   };
 
   // Role icon mapping
@@ -137,7 +145,7 @@ const UsersPage = () => {
     user: <User className="h-4 w-4" />,
     admin: <Shield className="h-4 w-4" />,
     moderator: <UserPlus className="h-4 w-4" />,
-    officer: <Shield className="h-4 w-4" />
+    officer: <Shield className="h-4 w-4" />,
   };
 
   return (
@@ -155,21 +163,24 @@ const UsersPage = () => {
             <span>Add User</span>
           </Button>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-2 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input 
-              placeholder="Search users by name, email or location..." 
+            <Input
+              placeholder="Search users by name, email or location..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 w-full">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 w-full"
+              >
                 <Filter className="h-4 w-4" />
                 <span>Role</span>
                 {roleFilter.length > 0 && (
@@ -183,48 +194,48 @@ const UsersPage = () => {
               <DropdownMenuLabel>Filter by Role</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuCheckboxItem
-                checked={roleFilter.includes('user')}
+                checked={roleFilter.includes("user")}
                 onCheckedChange={(checked) => {
-                  setRoleFilter(prev => 
-                    checked 
-                      ? [...prev, 'user'] 
-                      : prev.filter(r => r !== 'user')
+                  setRoleFilter((prev) =>
+                    checked
+                      ? [...prev, "user"]
+                      : prev.filter((r) => r !== "user"),
                   );
                 }}
               >
                 User
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={roleFilter.includes('admin')}
+                checked={roleFilter.includes("admin")}
                 onCheckedChange={(checked) => {
-                  setRoleFilter(prev => 
-                    checked 
-                      ? [...prev, 'admin'] 
-                      : prev.filter(r => r !== 'admin')
+                  setRoleFilter((prev) =>
+                    checked
+                      ? [...prev, "admin"]
+                      : prev.filter((r) => r !== "admin"),
                   );
                 }}
               >
                 Admin
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={roleFilter.includes('moderator')}
+                checked={roleFilter.includes("moderator")}
                 onCheckedChange={(checked) => {
-                  setRoleFilter(prev => 
-                    checked 
-                      ? [...prev, 'moderator'] 
-                      : prev.filter(r => r !== 'moderator')
+                  setRoleFilter((prev) =>
+                    checked
+                      ? [...prev, "moderator"]
+                      : prev.filter((r) => r !== "moderator"),
                   );
                 }}
               >
                 Moderator
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={roleFilter.includes('officer')}
+                checked={roleFilter.includes("officer")}
                 onCheckedChange={(checked) => {
-                  setRoleFilter(prev => 
-                    checked 
-                      ? [...prev, 'officer'] 
-                      : prev.filter(r => r !== 'officer')
+                  setRoleFilter((prev) =>
+                    checked
+                      ? [...prev, "officer"]
+                      : prev.filter((r) => r !== "officer"),
                   );
                 }}
               >
@@ -232,9 +243,9 @@ const UsersPage = () => {
               </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          
-          <Tabs 
-            defaultValue="all" 
+
+          <Tabs
+            defaultValue="all"
             className="w-full"
             onValueChange={setActiveTab}
           >
@@ -245,7 +256,7 @@ const UsersPage = () => {
             </TabsList>
           </Tabs>
         </div>
-        
+
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <Spinner size="lg" />
@@ -270,11 +281,23 @@ const UsersPage = () => {
                           <div>
                             <h3 className="font-medium">{user.name}</h3>
                             <div className="flex items-center gap-2 mt-1">
-                              <Badge variant={roleBadgeVariants[user.role] || 'default'} className="flex items-center gap-1 py-0.5">
+                              <Badge
+                                variant={
+                                  roleBadgeVariants[user.role] || "default"
+                                }
+                                className="flex items-center gap-1 py-0.5"
+                              >
                                 {roleIcons[user.role]}
                                 <span className="capitalize">{user.role}</span>
                               </Badge>
-                              <Badge variant={user.status === 'active' ? 'outline' : 'secondary'} className="py-0.5">
+                              <Badge
+                                variant={
+                                  user.status === "active"
+                                    ? "outline"
+                                    : "secondary"
+                                }
+                                className="py-0.5"
+                              >
                                 {user.status}
                               </Badge>
                             </div>
@@ -292,32 +315,43 @@ const UsersPage = () => {
                             <DropdownMenuItem>Reset Password</DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive">
-                              {user.status === 'active' ? 'Deactivate' : 'Activate'} Account
+                              {user.status === "active"
+                                ? "Deactivate"
+                                : "Activate"}{" "}
+                              Account
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                      
+
                       <div className="space-y-2 text-sm">
                         <div className="flex items-center gap-2">
                           <Mail className="h-4 w-4 text-muted-foreground" />
-                          <a href={`mailto:${user.email}`} className="text-primary hover:underline">
+                          <a
+                            href={`mailto:${user.email}`}
+                            className="text-primary hover:underline"
+                          >
                             {user.email}
                           </a>
                         </div>
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">{user.location}</span>
+                          <span className="text-muted-foreground">
+                            {user.location}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Joined {user.joinDate}</span>
+                          <span className="text-muted-foreground">
+                            Joined {user.joinDate}
+                          </span>
                         </div>
                         {user.complaints > 0 && (
                           <div className="flex items-center gap-2">
                             <MessageSquare className="h-4 w-4 text-muted-foreground" />
                             <span className="text-muted-foreground">
-                              {user.complaints} complaint{user.complaints !== 1 ? 's' : ''} submitted
+                              {user.complaints} complaint
+                              {user.complaints !== 1 ? "s" : ""} submitted
                             </span>
                           </div>
                         )}
@@ -334,15 +368,15 @@ const UsersPage = () => {
                     <h3 className="text-lg font-medium">No users found</h3>
                     <p className="text-muted-foreground mt-2">
                       {searchTerm || roleFilter.length > 0
-                        ? 'No users match your current filters. Try adjusting your search or filter criteria.'
-                        : 'No users found in the system.'}
+                        ? "No users match your current filters. Try adjusting your search or filter criteria."
+                        : "No users found in the system."}
                     </p>
                     {(searchTerm || roleFilter.length > 0) && (
-                      <Button 
-                        variant="outline" 
-                        className="mt-4" 
+                      <Button
+                        variant="outline"
+                        className="mt-4"
                         onClick={() => {
-                          setSearchTerm('');
+                          setSearchTerm("");
                           setRoleFilter([]);
                         }}
                       >

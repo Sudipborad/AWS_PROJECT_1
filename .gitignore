@@ -21,4 +21,17 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+.sw?
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Production
+build
+dist
+
+# Typescript
+*.tsbuildinfo
+

@@ -1,83 +1,70 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { useSupabase } from '@/hooks/useSupabase';
-import Layout from '@/components/Layout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  FileText, 
-  AlertCircle, 
-  CheckCircle, 
-  Clock, 
-  Recycle, 
-  Upload, 
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthContext } from "@/lib/AuthContext";
+import { useApi } from "@/hooks/useApi";
+import Layout from "@/components/Layout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  FileText,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  Recycle,
+  Upload,
   Loader2,
   Plus,
   MapPin,
-  Calendar
-} from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
+  Calendar,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 const UserDashboard = () => {
   const [complaints, setComplaints] = useState([]);
   const [recycleRequests, setRecycleRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { supabase } = useSupabase();
-  const { userId } = useAuth();
+  const { userId } = useAuthContext();
+  const { fetchComplaints, fetchRecyclables } = useApi();
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch only the user's complaints
-        const { data: userComplaints, error: complaintsError } = await supabase
-          .from('complaints')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false });
-          
-        if (complaintsError) throw complaintsError;
-        
-        // Fetch only the user's recycle requests
-        const { data: userRecycleRequests, error: recycleError } = await supabase
-          .from('recyclable_items')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false });
-          
-        if (recycleError) throw recycleError;
-        
+        const userComplaints = await fetchComplaints(userId);
         setComplaints(userComplaints || []);
+
+        // Fetch only the user's recycle requests
+        const userRecycleRequests = await fetchRecyclables(userId);
         setRecycleRequests(userRecycleRequests || []);
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error("Error fetching user data:", error);
       } finally {
         setLoading(false);
       }
     };
-    
+
     if (userId) {
       fetchUserData();
     }
-  }, [userId, supabase]);
+  }, [userId, fetchComplaints, fetchRecyclables]);
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
-      case 'resolved':
-      case 'collected':
-        return 'bg-green-50 text-green-600 border-green-200';
-      case 'in-progress':
-      case 'scheduled':
-        return 'bg-blue-50 text-blue-600 border-blue-200';
+      case "resolved":
+      case "collected":
+        return "bg-green-50 text-green-600 border-green-200";
+      case "in-progress":
+      case "scheduled":
+        return "bg-blue-50 text-blue-600 border-blue-200";
       default:
-        return 'bg-yellow-50 text-yellow-600 border-yellow-200';
+        return "bg-yellow-50 text-yellow-600 border-yellow-200";
     }
   };
 
@@ -99,14 +86,19 @@ const UserDashboard = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold">My Dashboard</h1>
-              <p className="text-muted-foreground">Track your complaints and recycling requests</p>
+              <p className="text-muted-foreground">
+                Track your complaints and recycling requests
+              </p>
             </div>
             <div className="flex gap-3">
-              <Button onClick={() => navigate('/new-complaint')}>
+              <Button onClick={() => navigate("/new-complaint")}>
                 <Plus className="mr-2 h-4 w-4" />
                 New Complaint
               </Button>
-              <Button variant="outline" onClick={() => navigate('/recyclable-item')}>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/recyclable-item")}
+              >
                 <Recycle className="mr-2 h-4 w-4" />
                 Recycle Request
               </Button>
@@ -119,7 +111,9 @@ const UserDashboard = () => {
               <CardContent className="pt-6">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Complaints</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Total Complaints
+                    </p>
                     <h3 className="text-2xl font-bold">{complaints.length}</h3>
                   </div>
                   <FileText className="h-8 w-8 text-primary/20" />
@@ -131,9 +125,11 @@ const UserDashboard = () => {
               <CardContent className="pt-6">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Resolved</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Resolved
+                    </p>
                     <h3 className="text-2xl font-bold">
-                      {complaints.filter(c => c.status === 'resolved').length}
+                      {complaints.filter((c) => c.status === "resolved").length}
                     </h3>
                   </div>
                   <CheckCircle className="h-8 w-8 text-green-500/20" />
@@ -145,8 +141,12 @@ const UserDashboard = () => {
               <CardContent className="pt-6">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Recycle Requests</p>
-                    <h3 className="text-2xl font-bold">{recycleRequests.length}</h3>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Recycle Requests
+                    </p>
+                    <h3 className="text-2xl font-bold">
+                      {recycleRequests.length}
+                    </h3>
                   </div>
                   <Recycle className="h-8 w-8 text-primary/20" />
                 </div>
@@ -157,9 +157,14 @@ const UserDashboard = () => {
               <CardContent className="pt-6">
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Collected</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Collected
+                    </p>
                     <h3 className="text-2xl font-bold">
-                      {recycleRequests.filter(r => r.status === 'collected').length}
+                      {
+                        recycleRequests.filter((r) => r.status === "collected")
+                          .length
+                      }
                     </h3>
                   </div>
                   <CheckCircle className="h-8 w-8 text-green-500/20" />
@@ -189,18 +194,28 @@ const UserDashboard = () => {
                             <div className="flex items-start justify-between">
                               <div className="space-y-3">
                                 <div>
-                                  <h3 className="font-medium">{complaint.title}</h3>
+                                  <h3 className="font-medium">
+                                    {complaint.title}
+                                  </h3>
                                   <p className="text-sm text-muted-foreground mt-1">
                                     {complaint.description}
                                   </p>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-3">
-                                  <Badge variant="outline" className={cn(getStatusColor(complaint.status))}>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      getStatusColor(complaint.status),
+                                    )}
+                                  >
                                     {complaint.status}
                                   </Badge>
                                   <div className="flex items-center text-xs text-muted-foreground">
                                     <Calendar className="h-3 w-3 mr-1" />
-                                    {format(new Date(complaint.created_at), 'MMM d, yyyy')}
+                                    {format(
+                                      new Date(complaint.created_at),
+                                      "MMM d, yyyy",
+                                    )}
                                   </div>
                                   {complaint.location && (
                                     <div className="flex items-center text-xs text-muted-foreground">
@@ -223,11 +238,13 @@ const UserDashboard = () => {
                   ) : (
                     <div className="text-center py-8">
                       <FileText className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-                      <h3 className="font-medium text-lg mb-2">No Complaints Yet</h3>
+                      <h3 className="font-medium text-lg mb-2">
+                        No Complaints Yet
+                      </h3>
                       <p className="text-muted-foreground mb-4">
                         You haven't submitted any complaints yet.
                       </p>
-                      <Button onClick={() => navigate('/complaints/new')}>
+                      <Button onClick={() => navigate("/complaints/new")}>
                         Submit Your First Complaint
                       </Button>
                     </div>
@@ -258,18 +275,28 @@ const UserDashboard = () => {
                             <div className="flex items-start justify-between">
                               <div className="space-y-3">
                                 <div>
-                                  <h3 className="font-medium">{request.name}</h3>
+                                  <h3 className="font-medium">
+                                    {request.name}
+                                  </h3>
                                   <p className="text-sm text-muted-foreground mt-1">
                                     {request.description}
                                   </p>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-3">
-                                  <Badge variant="outline" className={cn(getStatusColor(request.status))}>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      getStatusColor(request.status),
+                                    )}
+                                  >
                                     {request.status}
                                   </Badge>
                                   <div className="flex items-center text-xs text-muted-foreground">
                                     <Calendar className="h-3 w-3 mr-1" />
-                                    {format(new Date(request.created_at), 'MMM d, yyyy')}
+                                    {format(
+                                      new Date(request.created_at),
+                                      "MMM d, yyyy",
+                                    )}
                                   </div>
                                   {request.location && (
                                     <div className="flex items-center text-xs text-muted-foreground">
@@ -292,11 +319,13 @@ const UserDashboard = () => {
                   ) : (
                     <div className="text-center py-8">
                       <Recycle className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-                      <h3 className="font-medium text-lg mb-2">No Recycle Requests</h3>
+                      <h3 className="font-medium text-lg mb-2">
+                        No Recycle Requests
+                      </h3>
                       <p className="text-muted-foreground mb-4">
                         You haven't submitted any recycle requests yet.
                       </p>
-                      <Button onClick={() => navigate('/recycle/new')}>
+                      <Button onClick={() => navigate("/recycle/new")}>
                         Submit Your First Request
                       </Button>
                     </div>

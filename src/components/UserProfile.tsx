@@ -1,22 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { useUser } from '@clerk/clerk-react';
-import { useSupabase } from '@/hooks/useSupabase';
-import { useAuth } from '@/lib/AuthContext';
-import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-
-interface UserData {
-  id: string;
-  clerk_id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  avatar_url: string;
-  role: string;
-  created_at: string;
-}
+import React, { useEffect, useState } from "react";
+import { useAuthContext } from "@/lib/AuthContext";
+import { Button } from "./ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface UserStats {
   complaints_count: number;
@@ -24,57 +18,13 @@ interface UserStats {
 }
 
 const UserProfile: React.FC = () => {
-  const { user, isLoaded: isClerkLoaded } = useUser();
-  const { isAuthenticated, userId, userRole } = useAuth();
-  const { fetchData } = useSupabase();
-  const [userData, setUserData] = useState<UserData | null>(null);
+  const { user, isLoading } = useAuthContext();
   const [userStats, setUserStats] = useState<UserStats>({
     complaints_count: 0,
     recyclable_items_count: 0,
   });
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadUserData = async () => {
-      if (isAuthenticated && userId) {
-        try {
-          // Fetch user data from Supabase
-          const data = await fetchData<UserData>('users', {
-            filter: { clerk_id: userId },
-            single: true,
-          });
-
-          setUserData(data as UserData);
-
-          // Fetch user statistics
-          const complaintsData = await fetchData('complaints', {
-            filter: { user_id: userId },
-          }) as any[];
-
-          const recyclableItemsData = await fetchData('recyclable_items', {
-            filter: { user_id: userId },
-          }) as any[];
-
-          setUserStats({
-            complaints_count: complaintsData?.length || 0,
-            recyclable_items_count: recyclableItemsData?.length || 0,
-          });
-        } catch (error) {
-          console.error('Error loading user data:', error);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
-    if (isAuthenticated) {
-      loadUserData();
-    } else {
-      setLoading(false);
-    }
-  }, [isAuthenticated, userId, fetchData]);
-
-  if (!isClerkLoaded || loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -82,13 +32,18 @@ const UserProfile: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated || !user) {
+  if (!user) {
     return (
       <div className="text-center p-8">
-        <h2 className="text-2xl font-bold">Please sign in to view your profile</h2>
+        <h2 className="text-2xl font-bold">
+          Please sign in to view your profile
+        </h2>
       </div>
     );
   }
+
+  const initials =
+    `${user.first_name?.charAt(0) || ""}${user.last_name?.charAt(0) || ""}`.toUpperCase();
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -97,77 +52,64 @@ const UserProfile: React.FC = () => {
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="stats">Statistics</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="profile">
           <Card className="max-w-md mx-auto">
             <CardHeader className="flex flex-row items-center gap-4">
               <Avatar className="h-16 w-16">
-                <AvatarImage src={user.imageUrl} alt={user.fullName || 'User'} />
-                <AvatarFallback>
-                  {user.firstName?.charAt(0) || ''}
-                  {user.lastName?.charAt(0) || ''}
-                </AvatarFallback>
+                <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div>
-                <CardTitle>{user.fullName}</CardTitle>
-                <CardDescription>
-                  {userRole?.charAt(0).toUpperCase() + userRole?.slice(1) || 'User'}
-                </CardDescription>
+                <CardTitle>
+                  {user ? `${user.first_name} ${user.last_name}` : "User"}
+                </CardTitle>
+                <CardDescription>{user?.email}</CardDescription>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Email</p>
-                  <p>{user.emailAddresses[0]?.emailAddress}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Member Since</p>
-                  <p>{new Date(user.createdAt).toLocaleDateString()}</p>
-                </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Role
+                </p>
+                <p className="text-lg font-semibold capitalize">{user?.role}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Member Since
+                </p>
+                <p className="text-lg font-semibold">
+                  {user?.created_at
+                    ? new Date(user.created_at).toLocaleDateString()
+                    : "N/A"}
+                </p>
               </div>
             </CardContent>
-            <CardFooter>
-              <Button variant="outline" onClick={() => window.location.href = '/settings'}>
-                Edit Profile
-              </Button>
-            </CardFooter>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="stats">
           <Card className="max-w-md mx-auto">
             <CardHeader>
-              <CardTitle>Your Activity</CardTitle>
-              <CardDescription>
-                Summary of your contributions
-              </CardDescription>
+              <CardTitle>Your Statistics</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader className="p-4">
-                    <CardTitle className="text-lg">Complaints</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <p className="text-3xl font-bold">{userStats.complaints_count}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="p-4">
-                    <CardTitle className="text-lg">Recyclable Items</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <p className="text-3xl font-bold">{userStats.recyclable_items_count}</p>
-                  </CardContent>
-                </Card>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Complaints Filed
+                </p>
+                <p className="text-3xl font-bold">
+                  {userStats.complaints_count}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Recyclable Items Posted
+                </p>
+                <p className="text-3xl font-bold">
+                  {userStats.recyclable_items_count}
+                </p>
               </div>
             </CardContent>
-            <CardFooter>
-              <Button variant="outline" onClick={() => window.location.href = '/complaints'}>
-                View All Complaints
-              </Button>
-            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>
@@ -175,4 +117,4 @@ const UserProfile: React.FC = () => {
   );
 };
 
-export default UserProfile; 
+export default UserProfile;

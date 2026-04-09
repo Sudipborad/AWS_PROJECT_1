@@ -1,19 +1,38 @@
-import React, { useState, useEffect } from 'react';
-import Layout from '@/components/Layout';
-import { useSupabase } from '@/hooks/useSupabase';
-import { useAuth } from '@/lib/AuthContext';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { autoAssignComplaints } from '@/lib/assignComplaint';
-import { useToast } from '@/components/ui/use-toast';
-import { Loader2, RefreshCw, Search, MapPin } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import Layout from "@/components/Layout";
+import { useApi } from "@/hooks/useApi";
+import { useAuthContext } from "@/lib/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { autoAssignComplaints } from "@/lib/assignComplaint";
+import { useToast } from "@/components/ui/use-toast";
+import { Loader2, RefreshCw, Search, MapPin } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 interface Complaint {
   id: string;
@@ -36,17 +55,17 @@ interface Officer {
 }
 
 const AssignCasesPage = () => {
-  const { supabase } = useSupabase();
-  const { userId, user } = useAuth();
+  const { fetchComplaints, fetchUsers, updateComplaint } = useApi();
+  const { userId, user } = useAuthContext();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [filteredComplaints, setFilteredComplaints] = useState<Complaint[]>([]);
   const [officers, setOfficers] = useState<Officer[]>([]);
   const [loading, setLoading] = useState(false);
   const [autoAssignLoading, setAutoAssignLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [areaFilter, setAreaFilter] = useState('all');
-  const [assignedFilter, setAssignedFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [areaFilter, setAreaFilter] = useState("all");
+  const [assignedFilter, setAssignedFilter] = useState("all");
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -56,36 +75,20 @@ const AssignCasesPage = () => {
       setLoading(true);
       try {
         // Fetch complaints
-        const { data: complaintsData, error: complaintsError } = await supabase
-          .from('complaints')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (complaintsError) {
-          console.error('Error fetching complaints:', complaintsError);
-          throw complaintsError;
-        }
-
+        const complaintsData = await fetchComplaints();
         setComplaints(complaintsData || []);
 
         // Fetch officers
-        const { data: officersData, error: officersError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('role', 'officer');
-
-        if (officersError) {
-          console.error('Error fetching officers:', officersError);
-          throw officersError;
-        }
+        const usersData = await fetchUsers();
+        const officersData = Array.isArray(usersData) ? usersData.filter((u: any) => u.role === "officer") : [];
 
         setOfficers(officersData || []);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error("Error fetching data:", error);
         toast({
-          title: 'Error',
-          description: 'Failed to fetch data. Please try again.',
-          variant: 'destructive',
+          title: "Error",
+          description: "Failed to fetch data. Please try again.",
+          variant: "destructive",
         });
       } finally {
         setLoading(false);
@@ -93,7 +96,7 @@ const AssignCasesPage = () => {
     };
 
     fetchData();
-  }, [supabase, toast]);
+  }, [toast]);
 
   // Filter complaints based on search term, status, area, and assigned status
   useEffect(() => {
@@ -107,26 +110,30 @@ const AssignCasesPage = () => {
           complaint.title.toLowerCase().includes(term) ||
           complaint.description.toLowerCase().includes(term) ||
           complaint.location.toLowerCase().includes(term) ||
-          (complaint.area && complaint.area.toLowerCase().includes(term))
+          (complaint.area && complaint.area.toLowerCase().includes(term)),
       );
     }
 
     // Apply status filter
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter((complaint) => complaint.status === statusFilter);
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(
+        (complaint) => complaint.status === statusFilter,
+      );
     }
 
     // Apply area filter
-    if (areaFilter !== 'all') {
+    if (areaFilter !== "all") {
       filtered = filtered.filter(
-        (complaint) => complaint.area && complaint.area.toLowerCase() === areaFilter.toLowerCase()
+        (complaint) =>
+          complaint.area &&
+          complaint.area.toLowerCase() === areaFilter.toLowerCase(),
       );
     }
 
     // Apply assigned filter
-    if (assignedFilter === 'assigned') {
+    if (assignedFilter === "assigned") {
       filtered = filtered.filter((complaint) => complaint.assigned_to);
-    } else if (assignedFilter === 'unassigned') {
+    } else if (assignedFilter === "unassigned") {
       filtered = filtered.filter((complaint) => !complaint.assigned_to);
     }
 
@@ -134,74 +141,46 @@ const AssignCasesPage = () => {
   }, [complaints, searchTerm, statusFilter, areaFilter, assignedFilter]);
 
   // Handle manual assignment of a complaint to an officer
-  const handleAssignOfficer = async (complaintId: string, officerId: string | null) => {
+  const handleAssignOfficer = async (
+    complaintId: string,
+    officerId: string | null,
+  ) => {
     try {
-      // First check if assigned_to and assigned_at columns exist
-      const { error: checkError } = await supabase
-        .from('complaints')
-        .select('assigned_to, assigned_at')
-        .limit(1);
-      
-      if (checkError && checkError.code === '42703') {
-        // Columns don't exist - show error and ask user to run migration
-        console.error('Database columns missing:', checkError);
-        toast({
-          title: 'Database Setup Required',
-          description: 'Please run the database migration first. Contact the administrator.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
       // Proceed with the update
       const updateData: any = { assigned_to: officerId };
-      
+
       // Only add assigned_at if assigning (not when unassigning)
       if (officerId) {
         try {
           updateData.assigned_at = new Date().toISOString();
         } catch (e) {
-          console.warn('Could not set assigned_at timestamp:', e);
+          console.warn("Could not set assigned_at timestamp:", e);
         }
       }
-      
-      const { data, error } = await supabase
-        .from('complaints')
-        .update(updateData)
-        .eq('id', complaintId)
-        .select();
 
-      if (error) {
-        console.error('Error assigning officer:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to assign officer. Please try again.',
-          variant: 'destructive',
-        });
-        return;
-      }
+      await updateComplaint(complaintId, updateData);
 
       // Update local state
       setComplaints((prev) =>
         prev.map((complaint) =>
           complaint.id === complaintId
             ? { ...complaint, assigned_to: officerId }
-            : complaint
-        )
+            : complaint,
+        ),
       );
 
       toast({
-        title: 'Success',
+        title: "Success",
         description: officerId
-          ? 'Case has been assigned successfully.'
-          : 'Case has been unassigned successfully.',
+          ? "Case has been assigned successfully."
+          : "Case has been unassigned successfully.",
       });
     } catch (error) {
-      console.error('Error assigning officer:', error);
+      console.error("Error assigning officer:", error);
       toast({
-        title: 'Error',
-        description: 'An unexpected error occurred. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
       });
     }
   };
@@ -210,34 +189,39 @@ const AssignCasesPage = () => {
   const handleAutoAssign = async () => {
     setAutoAssignLoading(true);
     try {
-      const result = await autoAssignComplaints(supabase);
-
-      if (!result.success) {
-        throw new Error('Failed to auto-assign complaints.');
+      /* 
+       Auto-assign logic currently iterates through unassigned complaints 
+       and updates them via the API. In the future, this can be moved 
+       to a dedicated server-side endpoint for performance.
+      */
+      const unassigned = complaints.filter(c => !c.assigned_to);
+      if (unassigned.length > 0 && officers.length > 0) {
+        for (const complaint of unassigned) {
+           const matchingOfficer = officers.find(o => o.area === complaint.area) || officers[0];
+           if (matchingOfficer) {
+               await updateComplaint(complaint.id, {
+                  assigned_to: matchingOfficer.clerk_id || matchingOfficer.id,
+                  assigned_at: new Date().toISOString()
+               });
+           }
+        }
       }
 
       // Refresh complaints data
-      const { data: complaintsData, error: complaintsError } = await supabase
-        .from('complaints')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (complaintsError) {
-        throw complaintsError;
-      }
+      const complaintsData = await fetchComplaints();
 
       setComplaints(complaintsData || []);
 
       toast({
-        title: 'Success',
-        description: 'Cases have been auto-assigned successfully.',
+        title: "Success",
+        description: "Cases have been auto-assigned successfully.",
       });
     } catch (error) {
-      console.error('Error auto-assigning complaints:', error);
+      console.error("Error auto-assigning complaints:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to auto-assign cases. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to auto-assign cases. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setAutoAssignLoading(false);
@@ -246,7 +230,7 @@ const AssignCasesPage = () => {
 
   // Get unique areas from complaints
   const areas = Array.from(
-    new Set(complaints.map((complaint) => complaint.area).filter(Boolean))
+    new Set(complaints.map((complaint) => complaint.area).filter(Boolean)),
   );
 
   return (
@@ -374,12 +358,12 @@ const AssignCasesPage = () => {
                             <Badge
                               variant="outline"
                               className={cn(
-                                'px-2 py-1',
-                                complaint.status === 'resolved'
-                                  ? 'bg-green-50 text-green-700 border-green-200'
-                                  : complaint.status === 'in-progress'
-                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                  : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                                "px-2 py-1",
+                                complaint.status === "resolved"
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : complaint.status === "in-progress"
+                                    ? "bg-blue-50 text-blue-700 border-blue-200"
+                                    : "bg-yellow-50 text-yellow-700 border-yellow-200",
                               )}
                             >
                               {complaint.status}
@@ -389,12 +373,12 @@ const AssignCasesPage = () => {
                             <Badge
                               variant="outline"
                               className={cn(
-                                'px-2 py-1',
-                                complaint.priority === 'high'
-                                  ? 'bg-red-50 text-red-700 border-red-200'
-                                  : complaint.priority === 'medium'
-                                  ? 'bg-orange-50 text-orange-700 border-orange-200'
-                                  : 'bg-green-50 text-green-700 border-green-200'
+                                "px-2 py-1",
+                                complaint.priority === "high"
+                                  ? "bg-red-50 text-red-700 border-red-200"
+                                  : complaint.priority === "medium"
+                                    ? "bg-orange-50 text-orange-700 border-orange-200"
+                                    : "bg-green-50 text-green-700 border-green-200",
                               )}
                             >
                               {complaint.priority}
@@ -402,19 +386,21 @@ const AssignCasesPage = () => {
                           </TableCell>
                           <TableCell className="flex items-center">
                             <MapPin className="h-3 w-3 mr-1 text-muted-foreground" />
-                            {complaint.location || 'N/A'}
+                            {complaint.location || "N/A"}
                           </TableCell>
-                          <TableCell>{complaint.area || 'N/A'}</TableCell>
+                          <TableCell>{complaint.area || "N/A"}</TableCell>
                           <TableCell>
-                            {new Date(complaint.created_at).toLocaleDateString()}
+                            {new Date(
+                              complaint.created_at,
+                            ).toLocaleDateString()}
                           </TableCell>
                           <TableCell>
                             <Select
-                              value={complaint.assigned_to || ''}
+                              value={complaint.assigned_to || ""}
                               onValueChange={(value) =>
                                 handleAssignOfficer(
                                   complaint.id,
-                                  value === 'unassigned' ? null : value
+                                  value === "unassigned" ? null : value,
                                 )
                               }
                             >
@@ -422,7 +408,9 @@ const AssignCasesPage = () => {
                                 <SelectValue placeholder="Unassigned" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="unassigned">Unassigned</SelectItem>
+                                <SelectItem value="unassigned">
+                                  Unassigned
+                                </SelectItem>
                                 {officers.map((officer) => (
                                   <SelectItem
                                     key={officer.clerk_id}
@@ -432,12 +420,12 @@ const AssignCasesPage = () => {
                                         complaint.area &&
                                         officer.area.toLowerCase() ===
                                           complaint.area.toLowerCase()
-                                        ? 'text-green-600 font-medium'
-                                        : ''
+                                        ? "text-green-600 font-medium"
+                                        : "",
                                     )}
                                   >
                                     {officer.firstName} {officer.lastName} (
-                                    {officer.area || 'No area'})
+                                    {officer.area || "No area"})
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -447,7 +435,9 @@ const AssignCasesPage = () => {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => navigate(`/complaints/${complaint.id}`)}
+                              onClick={() =>
+                                navigate(`/complaints/${complaint.id}`)
+                              }
                             >
                               View Details
                             </Button>
@@ -466,4 +456,4 @@ const AssignCasesPage = () => {
   );
 };
 
-export default AssignCasesPage; 
+export default AssignCasesPage;

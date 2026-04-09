@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  Search, 
-  Filter, 
-  MapPin, 
-  Calendar, 
-  Clock, 
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+  Search,
+  Filter,
+  MapPin,
+  Calendar,
+  Clock,
   AlertTriangle,
   FileImage,
-  Eye
-} from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
+  Eye,
+} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,14 +22,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import Layout from '@/components/Layout';
-import { Link, useNavigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { useSupabase } from '@/hooks/useSupabase';
-import { useAuth } from '@/hooks/useAuth';
-import ComplaintImage from '@/components/ComplaintImage';
+} from "@/components/ui/dropdown-menu";
+import Layout from "@/components/Layout";
+import { Link, useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { useApi } from "@/hooks/useApi";
+import { useAuthContext } from "@/lib/AuthContext";
+import ComplaintImage from "@/components/ComplaintImage";
 import {
   Table,
   TableBody,
@@ -50,10 +50,10 @@ interface Complaint {
   description: string;
   location: string;
   coordinates: Coordinates | null;
-  status: 'pending' | 'assigned' | 'inProgress' | 'resolved';
+  status: "pending" | "assigned" | "inProgress" | "resolved";
   date: string;
   time: string;
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  priority: "low" | "medium" | "high" | "critical";
   area: string;
   reporter: {
     name: string;
@@ -65,40 +65,43 @@ interface Complaint {
 }
 
 const ComplaintsPage = () => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  
-  const { fetchData, supabase } = useSupabase();
-  const { userId, userRole } = useAuth();
+
+  const { fetchComplaints, fetchUsers } = useApi();
+  const { userId, userRole } = useAuthContext();
 
   const statusColors = {
-    pending: { color: 'text-amber-500', bg: 'bg-amber-50' },
-    assigned: { color: 'text-blue-500', bg: 'bg-blue-50' },
-    inProgress: { color: 'text-purple-500', bg: 'bg-purple-50' },
-    resolved: { color: 'text-green-500', bg: 'bg-green-50' }
+    pending: { color: "text-amber-500", bg: "bg-amber-50" },
+    assigned: { color: "text-blue-500", bg: "bg-blue-50" },
+    inProgress: { color: "text-purple-500", bg: "bg-purple-50" },
+    resolved: { color: "text-green-500", bg: "bg-green-50" },
   };
 
   const priorityColors = {
-    low: 'bg-green-500',
-    medium: 'bg-blue-500',
-    high: 'bg-amber-500',
-    critical: 'bg-red-500'
+    low: "bg-green-500",
+    medium: "bg-blue-500",
+    high: "bg-amber-500",
+    critical: "bg-red-500",
   };
 
-  const filteredComplaints = complaints.filter(complaint => {
-    const matchesSearch = 
-      !searchTerm || 
+  const filteredComplaints = complaints.filter((complaint) => {
+    const matchesSearch =
+      !searchTerm ||
       complaint.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       complaint.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
       complaint.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(complaint.status);
-    const matchesPriority = priorityFilter.length === 0 || priorityFilter.includes(complaint.priority);
-    
+
+    const matchesStatus =
+      statusFilter.length === 0 || statusFilter.includes(complaint.status);
+    const matchesPriority =
+      priorityFilter.length === 0 ||
+      priorityFilter.includes(complaint.priority);
+
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
@@ -109,53 +112,68 @@ const ComplaintsPage = () => {
       if (matches) {
         return {
           latitude: parseFloat(matches[1]),
-          longitude: parseFloat(matches[2])
+          longitude: parseFloat(matches[2]),
         };
       }
       return null;
     } catch (error) {
-      console.error('Error parsing coordinates:', error);
+      console.error("Error parsing coordinates:", error);
       return null;
     }
   };
 
   // Function to format complaints
-  const formatComplaints = (complaintsData: any[], users: any[]): Complaint[] => {
-    return (complaintsData || []).map(complaint => {
-      const submitter = users.find(u => u.clerk_id === complaint.user_id);
-      const assignedOfficer = users.find(u => u.clerk_id === complaint.assigned_to);
-      
+  const formatComplaints = (
+    complaintsData: any[],
+    users: any[],
+  ): Complaint[] => {
+    return (complaintsData || []).map((complaint) => {
+      const submitter = users.find((u) => u.clerk_id === complaint.user_id);
+      const assignedOfficer = users.find(
+        (u) => u.clerk_id === complaint.assigned_to,
+      );
+
       // Handle location and coordinates
-      let location = complaint.location || 'Location not specified';
+      let location = complaint.location || "Location not specified";
       let coordinates = null;
 
-      if (typeof complaint.coordinates === 'object' && complaint.coordinates !== null) {
+      if (
+        typeof complaint.coordinates === "object" &&
+        complaint.coordinates !== null
+      ) {
         coordinates = complaint.coordinates;
-      } else if (typeof location === 'string') {
+      } else if (typeof location === "string") {
         coordinates = parseCoordinates(location);
       }
-      
+
       const formattedComplaint: Complaint = {
         id: complaint.id,
-        title: complaint.title || '',
-        description: complaint.description || '',
+        title: complaint.title || "",
+        description: complaint.description || "",
         location: location,
         coordinates: coordinates,
-        status: (complaint.status as Complaint['status']) || 'pending',
+        status: (complaint.status as Complaint["status"]) || "pending",
         date: complaint.created_at,
         time: new Date(complaint.created_at).toLocaleTimeString(),
-        priority: (complaint.priority as Complaint['priority']) || 'medium',
-        area: complaint.area || 'unassigned',
+        priority: (complaint.priority as Complaint["priority"]) || "medium",
+        area: complaint.area || "unassigned",
         reporter: {
-          name: submitter ? `${submitter.first_name} ${submitter.last_name}` : 'Unknown User',
-          contact: submitter?.email || 'No contact information'
+          name: submitter
+            ? `${submitter.first_name} ${submitter.last_name}`
+            : "Unknown User",
+          contact: submitter?.email || "No contact information",
         },
-        assignedTo: assignedOfficer ? `${assignedOfficer.first_name} ${assignedOfficer.last_name}` : null,
+        assignedTo: assignedOfficer
+          ? `${assignedOfficer.first_name} ${assignedOfficer.last_name}`
+          : null,
         hasImage: !!complaint.image_url,
-        imageUrl: complaint.image_url || null
+        imageUrl: complaint.image_url || null,
       };
 
-      console.log('Formatted complaint:', JSON.stringify(formattedComplaint, null, 2));
+      console.log(
+        "Formatted complaint:",
+        JSON.stringify(formattedComplaint, null, 2),
+      );
       return formattedComplaint;
     });
   };
@@ -163,95 +181,68 @@ const ComplaintsPage = () => {
   // Function to load complaints
   const loadComplaints = async () => {
     try {
-      console.log('Loading complaints for role:', userRole);
-      console.log('User ID:', userId);
-      
+      console.log("Loading complaints for role:", userRole);
+      console.log("User ID:", userId);
+
       // Wait for both auth and role to be initialized
       if (!userId || !userRole) {
-        console.log('Waiting for user authentication and role...');
+        console.log("Waiting for user authentication and role...");
         return;
       }
 
       setLoading(true);
+
+      const [allComplaints, users] = await Promise.all([
+        fetchComplaints(),
+        fetchUsers()
+      ]);
       
       let complaintsData;
-      
-      // Filter complaints based on user role
-      if (userRole === 'admin') {
-        console.log('Fetching complaints for admin...');
-        const { data, error } = await supabase
-          .from('complaints')
-          .select('*')
-          .order('created_at', { ascending: false });
-          
-        if (error) throw error;
-        complaintsData = data;
-        console.log('Admin complaints fetched:', data?.length);
-      } else if (userRole === 'officer') {
-        console.log('Fetching complaints for officer...');
-        const { data: allComplaints, error: complaintsError } = await supabase
-          .from('complaints')
-          .select('*')
-          .order('created_at', { ascending: false });
-          
-        if (complaintsError) throw complaintsError;
-        console.log('All complaints fetched:', allComplaints?.length);
-        
-        const { data: officerData, error: officerError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('clerk_id', userId)
-          .single();
-          
-        if (officerError) throw officerError;
-        console.log('Officer data:', JSON.stringify(officerData, null, 2));
-        
-        let officerArea = officerData?.area?.toLowerCase() || 'unassigned';
-        console.log('Officer area:', officerArea);
-        
-        complaintsData = allComplaints.filter(c => {
-          const isAssigned = c.assigned_to === userId;
-          const complaintArea = (c.area || '').toLowerCase().trim();
-          const isInArea = officerArea !== 'unassigned' && complaintArea && (
-            complaintArea === officerArea ||
-            (officerArea === 'bopal' && 
-             complaintArea.includes('bopal') && 
-             !complaintArea.includes('south')) ||
-            (officerArea === 'south bopal' && 
-             complaintArea.includes('south bopal'))
-          );
 
-          console.log(`Complaint ${c.id}: assigned=${isAssigned}, area=${complaintArea}, inArea=${isInArea}`);
+      // Filter complaints based on user role
+      if (userRole === "admin") {
+        console.log("Fetching complaints for admin...");
+        complaintsData = allComplaints.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        console.log("Admin complaints fetched:", complaintsData?.length);
+      } else if (userRole === "officer") {
+        console.log("Fetching complaints for officer...");
+        const officerData = users.find((u: any) => u.id === userId || u.clerk_id === userId);
+
+        let officerArea = officerData?.area?.toLowerCase() || "unassigned";
+        console.log("Officer area:", officerArea);
+
+        complaintsData = allComplaints.filter((c: any) => {
+          const isAssigned = c.assigned_to === userId;
+          const complaintArea = (c.area || "").toLowerCase().trim();
+          const isInArea =
+            officerArea !== "unassigned" &&
+            complaintArea &&
+            (complaintArea === officerArea ||
+              (officerArea === "bopal" &&
+                complaintArea.includes("bopal") &&
+                !complaintArea.includes("south")) ||
+              (officerArea === "south bopal" &&
+                complaintArea.includes("south bopal")));
+
           return isAssigned || isInArea;
-        });
-        
-        console.log('Filtered officer complaints:', complaintsData?.length);
+        }).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        console.log("Filtered officer complaints:", complaintsData?.length);
       } else {
-        console.log('Fetching complaints for regular user...');
-        const { data, error } = await supabase
-          .from('complaints')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false });
-          
-        if (error) throw error;
-        complaintsData = data;
-        console.log('User complaints fetched:', data?.length);
+        console.log("Fetching complaints for regular user...");
+        complaintsData = allComplaints.filter((c: any) => c.user_id === userId)
+          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        console.log("User complaints fetched:", complaintsData?.length);
       }
 
-      // Fetch users for additional complaint details
-      const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select('*');
-        
-      if (usersError) throw usersError;
-      console.log('Users fetched:', users?.length);
-      
       const formattedComplaints = formatComplaints(complaintsData, users);
-      console.log('Setting formatted complaints:', JSON.stringify(formattedComplaints, null, 2));
+      console.log(
+        "Setting formatted complaints:",
+        JSON.stringify(formattedComplaints, null, 2),
+      );
       setComplaints(formattedComplaints);
     } catch (error) {
-      console.error('Error loading complaints:', error);
+      console.error("Error loading complaints:", error);
     } finally {
       setLoading(false);
     }
@@ -262,51 +253,35 @@ const ComplaintsPage = () => {
     loadComplaints();
   }, [userId, userRole]);
 
-  // Set up real-time subscription
+  // Set up polling (fallback for real-time subscription)
   useEffect(() => {
     if (!userId || !userRole) return;
-
-    // Subscribe to new complaints
-    const subscription = supabase
-      .channel('complaints_channel')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'complaints'
-        },
-        (payload) => {
-          console.log('Received real-time update:', payload);
-          loadComplaints(); // Reload all complaints when there's an update
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
+    const interval = setInterval(() => {
+      loadComplaints();
+    }, 15000); // 15 seconds polling
+    
+    return () => clearInterval(interval);
   }, [userId, userRole]);
 
   // Debug logging for render cycle
-  console.log('Current state:', {
+  console.log("Current state:", {
     loading,
     complaintsCount: complaints.length,
     filteredCount: filteredComplaints?.length || 0,
     userRole,
     userId,
-    complaints: JSON.stringify(complaints, null, 2)
+    complaints: JSON.stringify(complaints, null, 2),
   });
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
-  
+
   if (loading) {
     return (
       <Layout>
@@ -332,17 +307,20 @@ const ComplaintsPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-2 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input 
-              placeholder="Search by title, location or ID..." 
+            <Input
+              placeholder="Search by title, location or ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 w-full">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 w-full"
+              >
                 <Filter className="h-4 w-4" />
                 <span>Status</span>
                 {statusFilter.length > 0 && (
@@ -356,48 +334,48 @@ const ComplaintsPage = () => {
               <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuCheckboxItem
-                checked={statusFilter.includes('pending')}
+                checked={statusFilter.includes("pending")}
                 onCheckedChange={(checked) => {
-                  setStatusFilter(prev => 
-                    checked 
-                      ? [...prev, 'pending'] 
-                      : prev.filter(s => s !== 'pending')
+                  setStatusFilter((prev) =>
+                    checked
+                      ? [...prev, "pending"]
+                      : prev.filter((s) => s !== "pending"),
                   );
                 }}
               >
                 Pending
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={statusFilter.includes('assigned')}
+                checked={statusFilter.includes("assigned")}
                 onCheckedChange={(checked) => {
-                  setStatusFilter(prev => 
-                    checked 
-                      ? [...prev, 'assigned'] 
-                      : prev.filter(s => s !== 'assigned')
+                  setStatusFilter((prev) =>
+                    checked
+                      ? [...prev, "assigned"]
+                      : prev.filter((s) => s !== "assigned"),
                   );
                 }}
               >
                 Assigned
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={statusFilter.includes('inProgress')}
+                checked={statusFilter.includes("inProgress")}
                 onCheckedChange={(checked) => {
-                  setStatusFilter(prev => 
-                    checked 
-                      ? [...prev, 'inProgress'] 
-                      : prev.filter(s => s !== 'inProgress')
+                  setStatusFilter((prev) =>
+                    checked
+                      ? [...prev, "inProgress"]
+                      : prev.filter((s) => s !== "inProgress"),
                   );
                 }}
               >
                 In Progress
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={statusFilter.includes('resolved')}
+                checked={statusFilter.includes("resolved")}
                 onCheckedChange={(checked) => {
-                  setStatusFilter(prev => 
-                    checked 
-                      ? [...prev, 'resolved'] 
-                      : prev.filter(s => s !== 'resolved')
+                  setStatusFilter((prev) =>
+                    checked
+                      ? [...prev, "resolved"]
+                      : prev.filter((s) => s !== "resolved"),
                   );
                 }}
               >
@@ -405,10 +383,13 @@ const ComplaintsPage = () => {
               </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 w-full">
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 w-full"
+              >
                 <AlertTriangle className="h-4 w-4" />
                 <span>Priority</span>
                 {priorityFilter.length > 0 && (
@@ -422,48 +403,48 @@ const ComplaintsPage = () => {
               <DropdownMenuLabel>Filter by Priority</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuCheckboxItem
-                checked={priorityFilter.includes('low')}
+                checked={priorityFilter.includes("low")}
                 onCheckedChange={(checked) => {
-                  setPriorityFilter(prev => 
-                    checked 
-                      ? [...prev, 'low'] 
-                      : prev.filter(p => p !== 'low')
+                  setPriorityFilter((prev) =>
+                    checked
+                      ? [...prev, "low"]
+                      : prev.filter((p) => p !== "low"),
                   );
                 }}
               >
                 Low
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={priorityFilter.includes('medium')}
+                checked={priorityFilter.includes("medium")}
                 onCheckedChange={(checked) => {
-                  setPriorityFilter(prev => 
-                    checked 
-                      ? [...prev, 'medium'] 
-                      : prev.filter(p => p !== 'medium')
+                  setPriorityFilter((prev) =>
+                    checked
+                      ? [...prev, "medium"]
+                      : prev.filter((p) => p !== "medium"),
                   );
                 }}
               >
                 Medium
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={priorityFilter.includes('high')}
+                checked={priorityFilter.includes("high")}
                 onCheckedChange={(checked) => {
-                  setPriorityFilter(prev => 
-                    checked 
-                      ? [...prev, 'high'] 
-                      : prev.filter(p => p !== 'high')
+                  setPriorityFilter((prev) =>
+                    checked
+                      ? [...prev, "high"]
+                      : prev.filter((p) => p !== "high"),
                   );
                 }}
               >
                 High
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
-                checked={priorityFilter.includes('critical')}
+                checked={priorityFilter.includes("critical")}
                 onCheckedChange={(checked) => {
-                  setPriorityFilter(prev => 
-                    checked 
-                      ? [...prev, 'critical'] 
-                      : prev.filter(p => p !== 'critical')
+                  setPriorityFilter((prev) =>
+                    checked
+                      ? [...prev, "critical"]
+                      : prev.filter((p) => p !== "critical"),
                   );
                 }}
               >
@@ -500,53 +481,80 @@ const ComplaintsPage = () => {
                     </TableRow>
                   ) : filteredComplaints && filteredComplaints.length > 0 ? (
                     filteredComplaints.map((complaint) => {
-                      console.log('Rendering complaint:', JSON.stringify(complaint, null, 2));
+                      console.log(
+                        "Rendering complaint:",
+                        JSON.stringify(complaint, null, 2),
+                      );
                       return (
-                        <TableRow key={complaint.id} className="hover:bg-muted/50">
+                        <TableRow
+                          key={complaint.id}
+                          className="hover:bg-muted/50"
+                        >
                           <TableCell className="font-mono text-sm">
                             #{complaint.id.slice(0, 8)}
                           </TableCell>
                           <TableCell>
-                            <div className="font-medium">{complaint.title || 'No Title'}</div>
+                            <div className="font-medium">
+                              {complaint.title || "No Title"}
+                            </div>
                             <div className="text-sm text-muted-foreground">
-                              {complaint.description ? complaint.description.slice(0, 50) + '...' : 'No description'}
+                              {complaint.description
+                                ? complaint.description.slice(0, 50) + "..."
+                                : "No description"}
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className={cn(
-                              "px-2 py-1 rounded-full text-xs w-fit",
-                              statusColors[complaint.status]?.bg || statusColors.pending.bg,
-                              statusColors[complaint.status]?.color || statusColors.pending.color
-                            )}>
+                            <div
+                              className={cn(
+                                "px-2 py-1 rounded-full text-xs w-fit",
+                                statusColors[complaint.status]?.bg ||
+                                  statusColors.pending.bg,
+                                statusColors[complaint.status]?.color ||
+                                  statusColors.pending.color,
+                              )}
+                            >
                               {complaint.status}
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <div className={cn(
-                                "w-2 h-2 rounded-full",
-                                priorityColors[complaint.priority]
-                              )} />
-                              <span className="text-sm capitalize">{complaint.priority}</span>
+                              <div
+                                className={cn(
+                                  "w-2 h-2 rounded-full",
+                                  priorityColors[complaint.priority],
+                                )}
+                              />
+                              <span className="text-sm capitalize">
+                                {complaint.priority}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <MapPin className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm truncate max-w-[200px]" title={complaint.location}>
+                              <span
+                                className="text-sm truncate max-w-[200px]"
+                                title={complaint.location}
+                              >
                                 {complaint.location}
                               </span>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">{formatDate(complaint.date)}</div>
-                            <div className="text-xs text-muted-foreground">{complaint.time}</div>
+                            <div className="text-sm">
+                              {formatDate(complaint.date)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {complaint.time}
+                            </div>
                           </TableCell>
                           <TableCell>
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="sm"
-                              onClick={() => navigate(`/complaints/${complaint.id}`)}
+                              onClick={() =>
+                                navigate(`/complaints/${complaint.id}`)
+                              }
                               className="flex items-center gap-2 w-full"
                             >
                               <Eye className="h-4 w-4" />
