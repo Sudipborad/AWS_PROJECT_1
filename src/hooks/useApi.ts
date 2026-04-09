@@ -7,17 +7,20 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
  * Custom hook for API calls to the Express backend
  */
 export const useApi = () => {
-  // get token from localStorage since it's not exported by AuthContext
-  const token = localStorage.getItem("auth_token");
+  const { token } = useAuthContext();
 
   // Create axios instance with authorization header
   const apiClient: AxiosInstance = axios.create({
     baseURL: API_URL,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   });
+
+  // Add auth token to all requests
+  if (token) {
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  }
 
   /**
    * Fetch complaints
@@ -204,45 +207,6 @@ export const useApi = () => {
     }
   };
 
-  /**
-   * Fetch all users
-   */
-  const fetchUsers = async () => {
-    try {
-      const response = await apiClient.get('/api/users');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      throw error;
-    }
-  };
-
-  /**
-   * Update a user
-   */
-  const updateUser = async (userId: string, updates: Partial<any>) => {
-    try {
-      const response = await apiClient.put(`/api/users/${userId}`, updates);
-      return response.data;
-    } catch (error) {
-      console.error('Error updating user:', error);
-      throw error;
-    }
-  };
-
-  /**
-   * Delete a user
-   */
-  const deleteUser = async (userId: string) => {
-    try {
-      const response = await apiClient.delete(`/api/users/${userId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      throw error;
-    }
-  };
-
   return {
     apiClient,
     fetchComplaints,
@@ -257,8 +221,5 @@ export const useApi = () => {
     deleteRecyclable,
     uploadFile,
     fetchUserProfile,
-    fetchUsers,
-    updateUser,
-    deleteUser,
   };
 };
